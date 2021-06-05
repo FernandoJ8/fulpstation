@@ -1,3 +1,50 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//			TG OVERWRITES
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/// Prevents using a Memento Mori
+/obj/item/clothing/neck/necklace/memento_mori/memento(mob/living/carbon/human/user)
+	if(IS_BLOODSUCKER(user))
+		to_chat(user, "<span class='warning'>The Memento notices your undead soul, and refuses to react..</span>")
+		return
+	. = ..()
+
+/// Prevents Slimeperson 'gaming
+/datum/species/jelly/slime/spec_life(mob/living/carbon/human/H)
+	if(HAS_TRAIT(H, TRAIT_NOPULSE))
+		return
+	. = ..()
+
+/// No regeneration for vampires
+/datum/species/jelly/spec_life(mob/living/carbon/human/H)
+	if(HAS_TRAIT(H, TRAIT_NOPULSE))
+		return
+	. = ..()
+
+/// Prevents Bloodsuckers from naturally regenerating Blood - Even while on masquerade
+/mob/living/carbon/human/handle_blood(delta_time, times_fired)
+	if(IS_BLOODSUCKER(src))
+		return
+	/// For Vassals
+	if(HAS_TRAIT(src, TRAIT_NOPULSE))
+		return
+	. = ..()
+
+/// Return 0 as your natural temperature. Species proc handle_environment() will adjust your temperature based on this.
+/mob/living/carbon/natural_bodytemperature_stabilization()
+	if(HAS_TRAIT(src, TRAIT_COLDBLOODED))
+		return 0
+	. = ..()
+
+/// Overwrites mob/living/life.dm for LifeTick
+/mob/living/Life(delta_time = SSMOBS_DT, times_fired)
+	. = ..()
+	SEND_SIGNAL(src,COMSIG_LIVING_BIOLOGICAL_LIFE, delta_time, times_fired)
+
+
+
 /// INTEGRATION: Adding Procs and Datums to existing "classes"
 
 /mob/living/proc/HaveBloodsuckerBodyparts(displaymessage = "") // displaymessage can be something such as "rising from death" for Torpid Sleep. givewarningto is the person receiving messages.
@@ -78,7 +125,7 @@
 	return returnIcon + returnString
 
 /// Am I "pale" when examined? Bloodsuckers can trick this.
-/mob/living/carbon/human/proc/ShowAsPaleExamine()
+/mob/living/carbon/human/proc/ShowAsPaleExamine() // WILLARD TODO: Change this what the fuck?
 	// Normal Creatures:
 	if(!mind || !mind.has_antag_datum(/datum/antagonist/bloodsucker))
 		return blood_volume < BLOOD_VOLUME_SAFE
@@ -105,10 +152,3 @@
 			return BLOOD_VOLUME_NORMAL
 	return blood_volume
 */
-
-/proc/AmBloodsucker(mob/living/M, falseIfInDisguise = FALSE)
-	if(!M.mind)
-		return FALSE
-	if(!M.mind.has_antag_datum(/datum/antagonist/bloodsucker))
-		return FALSE
-	return TRUE

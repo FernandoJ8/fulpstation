@@ -11,8 +11,6 @@
 	exp_requirements = 300
 	exp_type = EXP_TYPE_CREW
 	exp_type_department = EXP_TYPE_SECURITY
-	id_icon = 'fulp_modules/main_features/jobs/cards.dmi'
-	hud_icon = 'fulp_modules/main_features/jobs/huds.dmi'
 	fulp_spawn = /obj/effect/landmark/start/brigdoc
 
 	outfit = /datum/outfit/job/brigdoc
@@ -24,6 +22,19 @@
 	display_order = JOB_DISPLAY_ORDER_SECURITY_OFFICER
 	bounty_types = CIV_JOB_SEC
 	departments = DEPARTMENT_SECURITY
+
+	mail_goodies = list(
+		/obj/item/reagent_containers/hypospray/medipen = 20,
+		/obj/item/reagent_containers/hypospray/medipen/oxandrolone = 10,
+		/obj/item/reagent_containers/hypospray/medipen/salacid = 10,
+		/obj/item/reagent_containers/hypospray/medipen/salbutamol = 10,
+		/obj/item/reagent_containers/hypospray/medipen/penacid = 10,
+		/obj/item/scalpel/advanced = 6,
+		/obj/item/retractor/advanced = 6,
+		/obj/item/cautery/advanced = 6,
+		/obj/effect/spawner/lootdrop/organ_spawner = 5,
+		/obj/effect/spawner/lootdrop/memeorgans = 1,
+	)
 
 	family_heirlooms = list(/obj/item/storage/firstaid/ancient/heirloom)
 

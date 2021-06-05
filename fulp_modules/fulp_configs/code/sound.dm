@@ -6,13 +6,13 @@
 // values can be tweaked as much as needed and don't need to equal to a hundred.
 GLOBAL_LIST_INIT(credits_music,list(
 	'fulp_modules/fulp_configs/sound/Fulp_Piano.ogg' = 80,
-	'fulp_modules/fulp_configs/sound/Fulp_Piano_Old.ogg' = 15,
-	'fulp_modules/fulp_configs/sound/Fulp_Uhoh_Stinky.ogg' = 5))
+	'fulp_modules/fulp_configs/sound/Fulp_Piano_Old.ogg' = 20,
+	))
 
 // This is for when the server restarts. Not weighted because it wasn't weighted to begin with.
 GLOBAL_LIST_INIT(round_end_tracks,list(
 	'sound/roundend/newroundsexy.ogg', 'sound/roundend/apcdestroyed.ogg',
-	'sound/roundend/bangindonk.ogg', 'sound/roundend/imaghoul.ogg',
+	'sound/roundend/bangindonk.ogg', 'fulp_modules/fulp_configs/sound/imaghoul.ogg',
 	'sound/roundend/petersondisappointed.ogg', 'sound/roundend/its_only_game.ogg',
 	'fulp_modules/fulp_configs/sound/i_got_banned_on_fulpstation.ogg'))
 

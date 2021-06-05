@@ -1,4 +1,4 @@
-/datum/action/bloodsucker
+/datum/action/bloodsucker // WILLARD TODO: Fix the comments through this entire file.
 	name = "Vampiric Gift"
 	desc = "A vampiric gift."
 	button_icon = 'fulp_modules/main_features/bloodsuckers/icons/actions_bloodsucker.dmi' //This is the file for the BACKGROUND icon
@@ -21,8 +21,10 @@
 	var/bloodcost
 	var/needs_button = TRUE // Taken from Changeling - for passive abilities that dont need a button
 	var/bloodsucker_can_buy = FALSE // Must be a bloodsucker to use this power.
+	var/vassal_can_buy = FALSE // Can Vassals buy this?
 	var/warn_constant_cost = FALSE // Some powers charge you for staying on. Masquerade, Cloak, Veil, etc.
 	var/can_use_in_torpor = FALSE // Most powers don't function if you're in torpor.
+	var/can_use_in_frenzy = FALSE // You can only Feed while in Frenzy
 	var/must_be_capacitated = FALSE // Some powers require you to be standing and ready.
 	var/can_be_immobilized = FALSE // Brawn can be used when incapacitated/laying if it's because you're being immobilized. NOTE: If must_be_capacitated is FALSE, this is irrelevant.
 	var/can_be_staked = FALSE // Only Feed can happen with a stake in you.
@@ -81,11 +83,12 @@
 		return FALSE
 	return TRUE
 
-/datum/action/bloodsucker/proc/CheckCanUse(display_error)	// These checks can be scanned every frame while a ranged power is on.
+/// These checks can be scanned every frame while a ranged power is on.
+/datum/action/bloodsucker/proc/CheckCanUse(display_error)
 	if(!owner || !owner.mind)
 		return FALSE
 	// Torpor?
-	if(!can_use_in_torpor && HAS_TRAIT(owner, TRAIT_FAKEDEATH))
+	if(!can_use_in_torpor && HAS_TRAIT(owner, TRAIT_NODEATH))
 		if(display_error)
 			to_chat(owner, "<span class='warning'>Not while you're in Torpor.</span>")
 		return FALSE
@@ -116,6 +119,13 @@
 		if(L.blood_volume <= 0)
 			if(display_error)
 				to_chat(owner, "<span class='warning'>You don't have the blood to upkeep [src].</span>")
+			return FALSE
+	/// In a Frenzy?
+	var/datum/antagonist/bloodsucker/bloodsuckerdatum = owner.mind.has_antag_datum(/datum/antagonist/bloodsucker)
+	if(bloodsuckerdatum && bloodsuckerdatum.Frenzied)
+		if(!can_use_in_frenzy)
+			if(display_error)
+				to_chat(owner, "<span class='warning'>You cannot use powers while in a Frenzy!</span>")
 			return FALSE
 	return TRUE
 
@@ -157,8 +167,14 @@
 	UpdateButtonIcon()
 	StartCooldown()
 
-/datum/action/bloodsucker/proc/ContinueActive(mob/living/user, mob/living/target) // Used by loops to make sure this power can stay active.
-	return active && user && (!warn_constant_cost || user.blood_volume > 0)
+/// Used by loops to make sure this power can stay active.
+/datum/action/bloodsucker/proc/ContinueActive(mob/living/user, mob/living/target)
+	if(!active)
+		return FALSE
+	if(!user)
+		return FALSE
+	if(!warn_constant_cost || user.blood_volume > 0)
+		return TRUE
 
 /// Used to unlearn Go Home ability
 /datum/action/bloodsucker/proc/RemoveAfterUse()
