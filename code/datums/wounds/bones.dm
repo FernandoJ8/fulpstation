@@ -221,6 +221,51 @@
 	. = ..()
 	RegisterSignal(victim, COMSIG_LIVING_DOORCRUSHED, .proc/door_crush)
 
+/// If someone is trying to dislocate our arm
+
+datum/component/dislocate/proc(mob/living/carbon/human/user)
+	if(user.pulling != victim || user.zone_selected != limb.body_zone)
+		return FALSE
+	if(user.grab_state == GRAB_PASSIVE)
+		to_chat(user, "<span class='warning'>You must have [victim] in an aggressive grab to manipulate [victim.p_their()] [lowertext(name)]!</span>")
+		return TRUE
+
+	if(user.grab_state >= GRAB_AGGRESSIVE)
+		user.visible_message("<span class='danger'>[user] begins twisting and straining [victim]'s [limb.name]!</span>", "<span class='notice'>You begin twisting and straining [victim]'s [limb.name]...</span>", ignored_mobs=victim)
+		to_chat(victim, "<span class='userdanger'>[user] begins twisting and straining your [limb.name]!</span>")
+		if(!user.combat_mode)
+			if(user.zone_selected == (BODY_ZONE_L_ARM || BODY_ZONE_R_ARM))
+				handshake(user)
+			else
+				legshake(user)
+		else
+			dislocate(user)
+		return TRUE
+
+datum/component/dislocate/proc/handshake(mob/living/carbon/human/user)
+	user.visible_message("<span class='danger'>[user] shakes [victim]'s [limb.name] extremely energetically!</span>", "<span class='notice'>You shake [victim]'s [limb.name] extremely energetically!</span>", ignored_mobs=victim)
+	to_chat(victim, "<span class='userdanger'>[user] shakes you [limb.name] extremely energetically!</span>")
+	qdel(src)
+
+datum/component/dislocate/proc/legshake(mob/living/carbon/human/user)
+	user.visible_message("<span class='danger'>[user] shakes [victim]'s [limb.name] extremely energetically and knocks [victim.p_their()] over!</span>", "<span class='notice'>You shake [victim]'s [limb.name] extremely energetically and knocks [victim.p_their()] over!</span>", ignored_mobs=victim)
+	to_chat(victim, "<span class='userdanger'>[user] shakes you [limb.name] extremely energetically and knocks you over!</span>")
+	qdel(src)
+
+datum/component/dislocate/proc/dislocate(mob/living/carbon/human/user)
+	if(user?.mind?.martial_art /= MARTIALART_CQC)
+		if(do_after(user, 80))
+			if(prob(65))
+				user.visible_message("<span class='danger'>[user] dislocates [victim]'s [limb.name] with a sickening crack!</span>", "<span class='danger'>You dislocate [victim]'s [limb.name] with a sickening crack!</span>", ignored_mobs=victim)
+				to_chat(victim, "<span class='userdanger'>[user] dislocates your [limb.name] with a sickening crack!</span>")
+				victim.emote("scream")
+	else
+		user.visible_message("<span class='danger'>[user] dislocates [victim]'s [limb.name] with a sickening crack!</span>", "<span class='danger'>You dislocate [victim]'s [limb.name] with a sickening crack!</span>", ignored_mobs=victim)
+		to_chat(victim, "<span class='userdanger'>[user] dislocates your [limb.name] with a sickening crack!</span>")
+		victim.emote("scream")
+
+/// Figure out how to make it actually dislocate
+
 /// Getting smushed in an airlock/firelock is a last-ditch attempt to try relocating your limb
 /datum/wound/blunt/moderate/proc/door_crush()
 	SIGNAL_HANDLER
