@@ -252,6 +252,8 @@ datum/component/dislocate/proc/legshake(mob/living/carbon/human/user)
 	to_chat(victim, "<span class='userdanger'>[user] shakes you [limb.name] extremely energetically and knocks you over!</span>")
 	qdel(src)
 
+/// Make it knock down
+
 datum/component/dislocate/proc/dislocate(mob/living/carbon/human/user)
 	if(user?.mind?.martial_art /= MARTIALART_CQC)
 		if(do_after(user, 80))
