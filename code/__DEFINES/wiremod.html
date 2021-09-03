@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <base href="../../" />
+    <link rel="stylesheet" href="dmdoc.css" />
+    <title>code&#x2F;__DEFINES&#x2F;wiremod.dm - &#x2F;tg&#x2F; Station 13</title>
+</head>
+<body>
+<header>
+    <a href="index.html">&#x2F;tg&#x2F; Station 13</a> -
+    <a href="index.html#modules">Modules</a> -
+    <a href="index.html#types">Types</a>
+ &mdash; <a href="code/__DEFINES/wiremod.html#define">Define Details</a></header>
+<main>
+<h1>code/__DEFINES/wiremod.dm 
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm"/></a></h1>
+
+<table class="summary" cellspacing="0">
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/COMPONENT_TRIGGERED_BY">COMPONENT_TRIGGERED_BY</a></th><td>Helper define that can only be used in /obj/item/circuit_component/input_received()</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_TYPE_ANY">PORT_TYPE_ANY</a></th><td>Can accept any datatype. Only works for inputs, output types will runtime.</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_TYPE_STRING">PORT_TYPE_STRING</a></th><td>String datatype</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_TYPE_NUMBER">PORT_TYPE_NUMBER</a></th><td>Number datatype</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_TYPE_SIGNAL">PORT_TYPE_SIGNAL</a></th><td>Signal datatype</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_TYPE_LIST">PORT_TYPE_LIST</a></th><td>List datatype</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_TYPE_ATOM">PORT_TYPE_ATOM</a></th><td>Atom datatype</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/PORT_ATOM_MAX_RANGE">PORT_ATOM_MAX_RANGE</a></th><td>The maximum range between a port and an atom</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/COMPONENT_MIN_RANDOM_POS">COMPONENT_MIN_RANDOM_POS</a></th><td>The minimum position of the x and y co-ordinates of the component in the UI</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/COMPONENT_MAX_RANDOM_POS">COMPONENT_MAX_RANDOM_POS</a></th><td>The maximum position of the x and y co-ordinates of the component in the UI</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/COMPONENT_MAX_POS">COMPONENT_MAX_POS</a></th><td>The maximum position in both directions that a component can be in.
+Prevents someone from positioning a component at an absurdly high value.</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/COMPONENT_SIGNAL">COMPONENT_SIGNAL</a></th><td>The value that is sent whenever a component is simply sending a signal. This can be anything.</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/COMP_DELAY_MIN_VALUE">COMP_DELAY_MIN_VALUE</a></th><td>The minimum delay value that the delay component can have.</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/SHELL_FLAG_CIRCUIT_FIXED">SHELL_FLAG_CIRCUIT_FIXED</a></th><td>Whether a circuit is stuck on a shell and cannot be removed (by a user)</td></tr>
+        <tr><th><a href="code/__DEFINES/wiremod.html#define/SHELL_FLAG_REQUIRE_ANCHOR">SHELL_FLAG_REQUIRE_ANCHOR</a></th><td>Whether the shell needs to be anchored for the circuit to be on.</td></tr></table><h2 id="define">Define Details</h2>
+<h3 id="define/COMPONENT_MAX_POS"><aside class="declaration">#define </aside>COMPONENT_MAX_POS
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L38">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 38"/></a>
+    </h3>
+    <p>The maximum position in both directions that a component can be in.
+Prevents someone from positioning a component at an absurdly high value.</p><h3 id="define/COMPONENT_MAX_RANDOM_POS"><aside class="declaration">#define </aside>COMPONENT_MAX_RANDOM_POS
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L34">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 34"/></a>
+    </h3>
+    <p>The maximum position of the x and y co-ordinates of the component in the UI</p><h3 id="define/COMPONENT_MIN_RANDOM_POS"><aside class="declaration">#define </aside>COMPONENT_MIN_RANDOM_POS
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L32">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 32"/></a>
+    </h3>
+    <p>The minimum position of the x and y co-ordinates of the component in the UI</p><h3 id="define/COMPONENT_SIGNAL"><aside class="declaration">#define </aside>COMPONENT_SIGNAL
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L43">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 43"/></a>
+    </h3>
+    <p>The value that is sent whenever a component is simply sending a signal. This can be anything.</p><h3 id="define/COMPONENT_TRIGGERED_BY"><aside class="declaration">#define </aside>COMPONENT_TRIGGERED_BY
+            <aside>(trigger, port)</aside>
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L4">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 4"/></a>
+    </h3>
+    <p>Helper define that can only be used in /obj/item/circuit_component/input_received()</p><h3 id="define/COMP_DELAY_MIN_VALUE"><aside class="declaration">#define </aside>COMP_DELAY_MIN_VALUE
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L55">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 55"/></a>
+    </h3>
+    <p>The minimum delay value that the delay component can have.</p><h3 id="define/PORT_ATOM_MAX_RANGE"><aside class="declaration">#define </aside>PORT_ATOM_MAX_RANGE
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L27">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 27"/></a>
+    </h3>
+    <p>The maximum range between a port and an atom</p><h3 id="define/PORT_TYPE_ANY"><aside class="declaration">#define </aside>PORT_TYPE_ANY
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L9">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 9"/></a>
+    </h3>
+    <p>Can accept any datatype. Only works for inputs, output types will runtime.</p><h3 id="define/PORT_TYPE_ATOM"><aside class="declaration">#define </aside>PORT_TYPE_ATOM
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L24">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 24"/></a>
+    </h3>
+    <p>Atom datatype</p><h3 id="define/PORT_TYPE_LIST"><aside class="declaration">#define </aside>PORT_TYPE_LIST
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L20">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 20"/></a>
+    </h3>
+    <p>List datatype</p><h3 id="define/PORT_TYPE_NUMBER"><aside class="declaration">#define </aside>PORT_TYPE_NUMBER
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L16">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 16"/></a>
+    </h3>
+    <p>Number datatype</p><h3 id="define/PORT_TYPE_SIGNAL"><aside class="declaration">#define </aside>PORT_TYPE_SIGNAL
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L18">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 18"/></a>
+    </h3>
+    <p>Signal datatype</p><h3 id="define/PORT_TYPE_STRING"><aside class="declaration">#define </aside>PORT_TYPE_STRING
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L13">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 13"/></a>
+    </h3>
+    <p>String datatype</p><h3 id="define/SHELL_FLAG_CIRCUIT_FIXED"><aside class="declaration">#define </aside>SHELL_FLAG_CIRCUIT_FIXED
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L84">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 84"/></a>
+    </h3>
+    <p>Whether a circuit is stuck on a shell and cannot be removed (by a user)</p><h3 id="define/SHELL_FLAG_REQUIRE_ANCHOR"><aside class="declaration">#define </aside>SHELL_FLAG_REQUIRE_ANCHOR
+            <a href="https://github.com/FernandoJ8/fulpstation/blob/00582adc7a6ce8a5f6174936bd9236145fec6327/code/__DEFINES/wiremod.dm#L87">
+        <img src="git.png" width="16" height="16" title="code&#x2F;__DEFINES&#x2F;wiremod.dm 87"/></a>
+    </h3>
+    <p>Whether the shell needs to be anchored for the circuit to be on.</p></main>
+<footer>
+    tgstation.dme
+    <a href="https://github.com/FernandoJ8/fulpstation/tree/00582adc7a6ce8a5f6174936bd9236145fec6327">00582ad</a>
+        (master) &mdash; <a href="https://github.com/SpaceManiac/SpacemanDMM/blob/master/src/dmdoc/README.md">dmdoc 1.4.0</a></footer>
+</body>
+</html>
