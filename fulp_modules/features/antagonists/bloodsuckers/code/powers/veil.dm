@@ -53,6 +53,7 @@
 
 	// Change Appearance
 	randomize_human(user)
+	user.dna.update_dna_identity()
 	if(prev_disfigured)
 		REMOVE_TRAIT(user, TRAIT_DISFIGURED, null)
 
