@@ -71,7 +71,6 @@
 
 	// Revert Identity
 	original_dna.copy_dna(user.dna)
-	user.dna.update_dna_identity()
 	user.real_name = original_name
 	user.underwear = original_underwear
 	user.underwear_color = original_underwear_colour
@@ -84,7 +83,7 @@
 		ADD_TRAIT(user, TRAIT_DISFIGURED, TRAIT_HUSK)
 
 	// Apply Appearance
-	user.updateappearance()
+	user.updateappearance(icon_update = TRUE, mutcolor_update = TRUE, mutations_overlay_update = TRUE)
 
 	cast_effect() // POOF
 	user.balloon_alert(owner, "veil turned off.")
