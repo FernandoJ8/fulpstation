@@ -71,6 +71,7 @@
 
 	// Revert Identity
 	original_dna.copy_dna(user.dna)
+	user.dna.update_dna_identity()
 	user.real_name = original_name
 	user.underwear = original_underwear
 	user.underwear_color = original_underwear_colour
