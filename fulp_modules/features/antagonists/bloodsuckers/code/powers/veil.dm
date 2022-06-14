@@ -12,23 +12,15 @@
 	bloodcost = 15
 	constant_bloodcost = 0.1
 	cooldown = 10 SECONDS
-	// Outfit Vars
-//	var/list/original_items = list()
-	// Identity Vars
+
+	// Identity & Preference Vars
 	var/datum/dna/original_dna
-	// Forgive me father for what I'm about to do...
-	var/mob/living/carbon/human/original_placeholder = new /mob/living/carbon/human
-	var/prev_gender
-	var/prev_skin_tone
-	var/prev_hair_style
-	var/prev_facial_hair_style
-	var/prev_hair_color
-	var/prev_facial_hair_color
-	var/prev_underwear
-	var/prev_undershirt
-	var/prev_socks
+	var/original_name
+	var/original_underwear
+	var/original_underwear_colour
+	var/original_undershirt
+	var/original_socks
 	var/prev_disfigured
-	var/list/prev_features // For lizards and such
 
 /datum/action/bloodsucker/veil/ActivatePower()
 	. = ..()
@@ -52,12 +44,15 @@
 	// Store Prev Appearance
 	original_dna = new user.dna.type
 	user.dna.copy_dna(original_dna)
-	user.copy_clothing_prefs(original_placeholder)
+	original_name = user.real_name
+	original_underwear = user.underwear
+	original_underwear_colour = user.underwear_color
+	original_undershirt = user.undershirt
+	original_socks = user.socks
 	prev_disfigured = HAS_TRAIT(user, TRAIT_DISFIGURED) // I was disfigured! //prev_disabilities = user.disabilities
 
 	// Change Appearance
-	user.create_dna()
-	user.dna.initialize_dna(newblood_type = TRUE)
+	randomize_human(user)
 	if(prev_disfigured)
 		REMOVE_TRAIT(user, TRAIT_DISFIGURED, null)
 
@@ -75,7 +70,11 @@
 
 	// Revert Identity
 	original_dna.copy_dna(user.dna)
-	original_placeholder.copy_clothing_prefs(user)
+	user.real_name = original_name
+	user.underwear = original_underwear
+	user.underwear_color = original_underwear_colour
+	user.undershirt = original_undershirt
+	user.socks = original_socks
 
 	//user.disabilities = prev_disabilities // Restore HUSK, CLUMSY, etc.
 	if(prev_disfigured)
