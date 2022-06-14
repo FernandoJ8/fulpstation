@@ -47,9 +47,6 @@
 /datum/action/bloodsucker/veil/proc/veil_user()
 	// Change Name/Voice
 	var/mob/living/carbon/human/user = owner
-	user.name_override = user.dna.species.random_name(user.gender)
-	user.name = user.name_override
-	user.SetSpecialVoice(user.name_override)
 	to_chat(owner, span_warning("You mystify the air around your person. Your identity is now altered."))
 
 	// Store Prev Appearance
@@ -59,7 +56,7 @@
 	prev_disfigured = HAS_TRAIT(user, TRAIT_DISFIGURED) // I was disfigured! //prev_disabilities = user.disabilities
 
 	// Change Appearance
-	user.create_dna()
+	randomize_human(user)
 	if(prev_disfigured)
 		REMOVE_TRAIT(user, TRAIT_DISFIGURED, null)
 
@@ -67,7 +64,7 @@
 	proof_beefman_features(user.dna.features)
 
 	// Apply Appearance
-	user.updateappearance()
+	user.updateappearance(icon_update = TRUE, mutcolor_update = TRUE, mutations_overlay_update = TRUE)
 
 /datum/action/bloodsucker/veil/DeactivatePower()
 	. = ..()
