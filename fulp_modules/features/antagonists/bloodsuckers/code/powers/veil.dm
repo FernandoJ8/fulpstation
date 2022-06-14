@@ -56,7 +56,8 @@
 	prev_disfigured = HAS_TRAIT(user, TRAIT_DISFIGURED) // I was disfigured! //prev_disabilities = user.disabilities
 
 	// Change Appearance
-	randomize_human(user)
+	user.create_dna()
+	user.dna.initialize_dna(newblood_type = TRUE)
 	if(prev_disfigured)
 		REMOVE_TRAIT(user, TRAIT_DISFIGURED, null)
 
