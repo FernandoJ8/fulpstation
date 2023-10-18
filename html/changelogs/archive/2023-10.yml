@@ -1,0 +1,25 @@
+2023-10-18:
+  BanementI:
+  - rscadd: Infiltrators now have their own survival box.
+  FernandoJ8:
+  - bugfix: Prison seating projectors and Prison restaurant portal boards are now
+      printable from proto/autolathes.
+  - bugfix: The prison restaurant portal boards are now printable from the security
+      protolathe rather than the service one.
+  - qol: AFK mentors are no longer hidden from MentorWho
+  JohnFulpWillard:
+  - bugfix: '[Heliostation] The security medical outpost no longer gives security
+      full access to Medbay, even if they aren''t assigned there.'
+  - bugfix: '[Heliostation] Engineering''s airlocks leading to space are now behind
+      Engineering access.'
+  SandPoot:
+  - image: Changed screentips icons to something a lot fancier unified with the LMB
+      / RMB text.
+  - qol: There are accessibility preferences to disable this! Look for "Screentip
+      context with images" beside the other screentip preferences.
+  Sealed101:
+  - image: bubblegum's blood smack and blood grab use new bubblegum sprites
+  SgtHunk:
+  - rscadd: ponies
+  Sheits:
+  - image: Re-sprites some of the oldest hairstyles
