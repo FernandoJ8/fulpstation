@@ -1,0 +1,8 @@
+author: "FernandoJ8"
+delete-after: True
+changes:
+  - rscadd: "Increased the room in plumbing"
+  - rscadd: "...twice!"
+  - rscdel: "Deleted botany"
+  - qol: "Replaced medbay with a pile of patches"
+  - balance: "Replaced the SM with three turbines."
