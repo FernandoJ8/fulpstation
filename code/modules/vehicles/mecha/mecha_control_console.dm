@@ -35,8 +35,8 @@
 			emp_recharging = MT.recharging,
 			tracker_ref = REF(MT)
 		)
-		if(istype(M, /obj/vehicle/sealed/mecha/working/ripley))
-			var/obj/vehicle/sealed/mecha/working/ripley/RM = M
+		if(istype(M, /obj/vehicle/sealed/mecha/ripley))
+			var/obj/vehicle/sealed/mecha/ripley/RM = M
 			mech_data += list(
 				cargo_space = round((LAZYLEN(RM.cargo) / RM.cargo_capacity) * 100)
 		)
@@ -98,10 +98,10 @@
 				<b>Integrity:</b> [round((chassis.get_integrity()/chassis.max_integrity * 100), 0.01)]%<br>
 				<b>Cell Charge:</b> [isnull(cell_charge) ? "Not Found":"[chassis.cell.percent()]%"]<br>
 				<b>Airtank:</b> [chassis.internal_tank ? "[round(chassis.return_pressure(), 0.01)]" : "Not Equipped"] kPa<br>
-				<b>Pilot:</b> [chassis.return_drivers() || "None"]<br>
+				<b>Pilot:</b> [english_list(chassis.return_drivers(), nothing_text = "None")]<br>
 				<b>Location:</b> [get_area_name(chassis, TRUE) || "Unknown"]"}
-	if(istype(chassis, /obj/vehicle/sealed/mecha/working/ripley))
-		var/obj/vehicle/sealed/mecha/working/ripley/RM = chassis
+	if(istype(chassis, /obj/vehicle/sealed/mecha/ripley))
+		var/obj/vehicle/sealed/mecha/ripley/RM = chassis
 		answer += "<br><b>Used Cargo Space:</b> [round((LAZYLEN(RM.cargo) / RM.cargo_capacity * 100), 0.01)]%"
 
 	return answer
@@ -133,7 +133,7 @@
 		return
 	if(chassis)
 		chassis.emp_act(EMP_HEAVY)
-		addtimer(CALLBACK(src, /obj/item/mecha_parts/mecha_tracking/proc/recharge), 5 SECONDS, TIMER_UNIQUE | TIMER_OVERRIDE)
+		addtimer(CALLBACK(src, TYPE_PROC_REF(/obj/item/mecha_parts/mecha_tracking, recharge)), 5 SECONDS, TIMER_UNIQUE | TIMER_OVERRIDE)
 		recharging = TRUE
 
 /**

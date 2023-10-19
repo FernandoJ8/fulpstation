@@ -1,7 +1,7 @@
 /mob/living/simple_animal/hostile/asteroid/ice_demon
 	name = "demonic watcher"
 	desc = "A creature formed entirely out of ice, bluespace energy emanates from inside of it."
-	icon = 'icons/mob/icemoon/icemoon_monsters.dmi'
+	icon = 'icons/mob/simple/icemoon/icemoon_monsters.dmi'
 	icon_state = "ice_demon"
 	icon_living = "ice_demon"
 	icon_dead = "ice_demon_dead"
@@ -53,7 +53,6 @@
 	speed = 1
 	pixel_speed_multiplier = 0.25
 	range = 200
-	nodamage = FALSE
 	temperature = -75
 	slowdown = FALSE
 

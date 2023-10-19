@@ -19,15 +19,19 @@
 
 	/// If TRUE, we cannot mindswap into mobs with minds if they do not currently have a key / player.
 	var/target_requires_key = TRUE
+	/// If TRUE, we cannot mindswap into people without a mind.
+	/// You may be wondering "What's the point of mindswap if the target has no mind"?
+	/// Primarily for debugging - targets hit with this set to FALSE will init a mind, then do the swap.
+	var/target_requires_mind = TRUE
 	/// For how long is the caster stunned for after the spell
 	var/unconscious_amount_caster = 40 SECONDS
 	/// For how long is the victim stunned for after the spell
 	var/unconscious_amount_victim = 40 SECONDS
 	/// List of mobs we cannot mindswap into.
 	var/static/list/mob/living/blacklisted_mobs = typecacheof(list(
+		/mob/living/basic/demon/slaughter,
 		/mob/living/brain,
 		/mob/living/silicon/pai,
-		/mob/living/simple_animal/hostile/imp/slaughter,
 		/mob/living/simple_animal/hostile/megafauna,
 	))
 
@@ -37,7 +41,7 @@
 		return FALSE
 	if(!isliving(owner))
 		return FALSE
-	if(owner.suiciding)
+	if(HAS_TRAIT(owner, TRAIT_SUICIDED))
 		if(feedback)
 			to_chat(owner, span_warning("You're killing yourself! You can't concentrate enough to do this!"))
 		return FALSE
@@ -64,11 +68,11 @@
 	if(living_target.stat == DEAD)
 		to_chat(owner, span_warning("You don't particularly want to be dead!"))
 		return FALSE
-	if(!living_target.mind)
-		to_chat(owner, span_warning("[living_target.p_theyve(TRUE)] doesn't appear to have a mind to swap into!"))
+	if(!living_target.mind && target_requires_mind)
+		to_chat(owner, span_warning("[living_target.p_They()] [living_target.p_do()]n't appear to have a mind to swap into!"))
 		return FALSE
 	if(!living_target.key && target_requires_key)
-		to_chat(owner, span_warning("[living_target.p_theyve(TRUE)] appear[living_target.p_s()] to be catatonic! \
+		to_chat(owner, span_warning("[living_target.p_They()] appear[living_target.p_s()] to be catatonic! \
 			Not even magic can affect [living_target.p_their()] vacant mind."))
 		return FALSE
 
@@ -86,6 +90,10 @@
 		if(stand.summoner)
 			to_swap = stand.summoner
 
+	// Gives the target a mind if we don't require one and they don't have one
+	if(!to_swap.mind && !target_requires_mind)
+		to_swap.mind_initialize()
+
 	var/datum/mind/mind_to_swap = to_swap.mind
 	if(to_swap.can_block_magic(antimagic_flags) \
 		|| mind_to_swap.has_antag_datum(/datum/antagonist/wizard) \
@@ -94,7 +102,7 @@
 		|| mind_to_swap.has_antag_datum(/datum/antagonist/rev) \
 		|| mind_to_swap.key?[1] == "@" \
 	)
-		to_chat(caster, span_warning("[to_swap.p_their(TRUE)] mind is resisting your spell!"))
+		to_chat(caster, span_warning("[to_swap.p_Their()] mind is resisting your spell!"))
 		return FALSE
 
 	// MIND TRANSFER BEGIN

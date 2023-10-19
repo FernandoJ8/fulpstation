@@ -1,3 +1,4 @@
+GLOBAL_VAR_INIT(revolutionary_win, FALSE)
 
 //////////////////////////////////////////////
 //                                          //
@@ -273,14 +274,29 @@
 	weight = 2
 	cost = 20
 	requirements = list(90,90,90,80,60,40,30,20,10,10)
-	var/list/roundstart_wizards = list()
+	ruleset_lazy_templates = list(LAZY_TEMPLATE_KEY_WIZARDDEN)
 
-/datum/dynamic_ruleset/roundstart/wizard/acceptable(population=0, threat=0)
-	if(GLOB.wizardstart.len == 0)
+/datum/dynamic_ruleset/roundstart/wizard/ready(forced = FALSE)
+	if(!check_candidates())
+		return FALSE
+	if(!length(GLOB.wizardstart))
 		log_admin("Cannot accept Wizard ruleset. Couldn't find any wizard spawn points.")
 		message_admins("Cannot accept Wizard ruleset. Couldn't find any wizard spawn points.")
 		return FALSE
 	return ..()
+
+/datum/dynamic_ruleset/roundstart/wizard/round_result()
+	for(var/datum/antagonist/wizard/wiz in GLOB.antagonists)
+		var/mob/living/real_wiz = wiz.owner?.current
+		if(isnull(real_wiz))
+			continue
+
+		var/turf/wiz_location = get_turf(real_wiz)
+		// If this wiz is alive AND not in an away level, then we know not all wizards are dead and can leave entirely
+		if(considered_alive(wiz.owner) && wiz_location && !is_away_level(wiz_location.z))
+			return
+
+	SSticker.news_report = WIZARD_KILLED
 
 /datum/dynamic_ruleset/roundstart/wizard/pre_execute()
 	. = ..()
@@ -360,13 +376,25 @@
 	return TRUE
 
 /datum/dynamic_ruleset/roundstart/bloodcult/round_result()
-	..()
 	if(main_cult.check_cult_victory())
 		SSticker.mode_result = "win - cult win"
 		SSticker.news_report = CULT_SUMMON
-	else
-		SSticker.mode_result = "loss - staff stopped the cult"
-		SSticker.news_report = CULT_FAILURE
+		return
+
+	SSticker.mode_result = "loss - staff stopped the cult"
+
+	if(main_cult.size_at_maximum == 0)
+		CRASH("Cult team existed with a size_at_maximum of 0 at round end!")
+
+	// If more than a certain ratio of our cultists have escaped, give the "cult escape" resport.
+	// Otherwise, give the "cult failure" report.
+	var/ratio_to_be_considered_escaped = 0.5
+	var/escaped_cultists = 0
+	for(var/datum/mind/escapee as anything in main_cult.members)
+		if(considered_escaped(escapee))
+			escaped_cultists++
+
+	SSticker.news_report = (escaped_cultists / main_cult.size_at_maximum) >= ratio_to_be_considered_escaped ? CULT_ESCAPE : CULT_FAILURE
 
 //////////////////////////////////////////////
 //                                          //
@@ -390,6 +418,7 @@
 	requirements = list(90,90,90,80,60,40,30,20,10,10)
 	flags = HIGH_IMPACT_RULESET
 	antag_cap = list("denominator" = 18, "offset" = 1)
+	ruleset_lazy_templates = list(LAZY_TEMPLATE_KEY_NUKIEBASE)
 	var/required_role = ROLE_NUCLEAR_OPERATIVE
 	var/datum/team/nuclear/nuke_team
 
@@ -431,10 +460,10 @@
 			SSticker.news_report = NUKE_SYNDICATE_BASE
 		if(NUKE_RESULT_NUKE_WIN)
 			SSticker.mode_result = "win - syndicate nuke"
-			SSticker.news_report = STATION_NUKED
+			SSticker.news_report = STATION_DESTROYED_NUKE
 		if(NUKE_RESULT_NOSURVIVORS)
 			SSticker.mode_result = "halfwin - syndicate nuke - did not evacuate in time"
-			SSticker.news_report = STATION_NUKED
+			SSticker.news_report = STATION_DESTROYED_NUKE
 		if(NUKE_RESULT_WRONG_STATION)
 			SSticker.mode_result = "halfwin - blew wrong station"
 			SSticker.news_report = NUKE_MISS
@@ -526,7 +555,7 @@
 			log_dynamic("[ruletype] [name] discarded [M.name] from head revolutionary due to ineligibility.")
 	if(revolution.members.len)
 		revolution.update_objectives()
-		revolution.update_heads()
+		revolution.update_rev_heads()
 		SSshuttle.registerHostileEnvironment(revolution)
 		return TRUE
 	log_dynamic("[ruletype] [name] failed to get any eligible headrevs. Refunding [cost] threat.")
@@ -542,6 +571,10 @@
 		return
 
 	finished = winner
+
+	if(winner == REVOLUTION_VICTORY)
+		GLOB.revolutionary_win = TRUE
+
 	return RULESET_STOP_PROCESSING
 
 /// Checks for revhead loss conditions and other antag datums.
@@ -599,16 +632,17 @@
 
 /datum/dynamic_ruleset/roundstart/nuclear/clown_ops/pre_execute()
 	. = ..()
-	if(.)
-		var/obj/machinery/nuclearbomb/syndicate/syndicate_nuke = locate() in GLOB.nuke_list
-		if(syndicate_nuke)
-			var/turf/nuke_turf = get_turf(syndicate_nuke)
-			if(nuke_turf)
-				new /obj/machinery/nuclearbomb/syndicate/bananium(nuke_turf)
-				qdel(syndicate_nuke)
-		for(var/datum/mind/clowns in assigned)
-			clowns.set_assigned_role(SSjob.GetJobType(/datum/job/clown_operative))
-			clowns.special_role = ROLE_CLOWN_OPERATIVE
+	if(!.)
+		return
+
+	var/list/nukes = SSmachines.get_machines_by_type(/obj/machinery/nuclearbomb/syndicate)
+	for(var/obj/machinery/nuclearbomb/syndicate/nuke as anything in nukes)
+		new /obj/machinery/nuclearbomb/syndicate/bananium(nuke.loc)
+		qdel(nuke)
+
+	for(var/datum/mind/clowns in assigned)
+		clowns.set_assigned_role(SSjob.GetJobType(/datum/job/clown_operative))
+		clowns.special_role = ROLE_CLOWN_OPERATIVE
 
 //////////////////////////////////////////////
 //                                          //
@@ -668,3 +702,5 @@
 
 	for(var/department_type in department_types)
 		create_separatist_nation(department_type, announcement = FALSE, dangerous = FALSE, message_admins = FALSE)
+
+	GLOB.round_default_lawset = /datum/ai_laws/united_nations

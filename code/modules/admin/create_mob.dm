@@ -12,7 +12,7 @@
 
 /proc/randomize_human(mob/living/carbon/human/human)
 	if(human.dna.species.sexes)
-		human.gender = pick(MALE, FEMALE, PLURAL)
+		human.gender = pick(MALE, FEMALE, PLURAL, NEUTER)
 	else
 		human.gender = PLURAL
 	human.physique = human.gender
@@ -28,7 +28,7 @@
 
 	human.dna.blood_type = random_blood_type()
 	human.dna.features["mcolor"] = "#[random_color()]"
-	human.dna.species.randomize_active_underwear(human)
+	human.dna.species.randomize_active_underwear_only(human)
 
 	for(var/datum/species/species_path as anything in subtypesof(/datum/species))
 		var/datum/species/new_species = new species_path

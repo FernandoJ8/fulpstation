@@ -10,15 +10,22 @@
 #define HARM_ALARM_SAFETY_COOLDOWN (20 SECONDS)
 
 /obj/item/borg
-	icon = 'icons/mob/robot_items.dmi'
+	icon = 'icons/mob/silicon/robot_items.dmi'
 
 /obj/item/borg/stun
 	name = "electrically-charged arm"
 	icon_state = "elecarm"
+	var/stamina_damage = 60 //Same as normal batong
 	/// Cost to use the stun arm
-	var/charge_cost = 1000
+	var/charge_cost = 200
+	var/cooldown_check = 0
+	/// cooldown between attacks
+	var/cooldown = 4 SECONDS // same as baton
 
 /obj/item/borg/stun/attack(mob/living/attacked_mob, mob/living/user)
+	if(cooldown_check > world.time)
+		user.balloon_alert(user, "still recharging!")
+		return
 	if(ishuman(attacked_mob))
 		var/mob/living/carbon/human/human = attacked_mob
 		if(human.check_shields(src, 0, "[attacked_mob]'s [name]", MELEE_ATTACK))
@@ -30,14 +37,20 @@
 			return
 
 	user.do_attack_animation(attacked_mob)
-	attacked_mob.Paralyze(100)
-	attacked_mob.adjust_timed_status_effect(10 SECONDS, /datum/status_effect/speech/stutter)
-
-	attacked_mob.visible_message(span_danger("[user] prods [attacked_mob] with [src]!"), \
+	attacked_mob.adjustStaminaLoss(stamina_damage)
+	attacked_mob.set_confusion_if_lower(5 SECONDS)
+	attacked_mob.adjust_stutter(20 SECONDS)
+	attacked_mob.set_jitter_if_lower(5 SECONDS)
+	if(issilicon(attacked_mob))
+		attacked_mob.emp_act(EMP_HEAVY)
+		attacked_mob.visible_message(span_danger("[user] shocks [attacked_mob] with [src]!"), \
+					span_userdanger("[user] shocks you with [src]!"))
+	else
+		attacked_mob.visible_message(span_danger("[user] prods [attacked_mob] with [src]!"), \
 					span_userdanger("[user] prods you with [src]!"))
 
 	playsound(loc, 'sound/weapons/egloves.ogg', 50, TRUE, -1)
-
+	cooldown_check = world.time + cooldown
 	log_combat(user, attacked_mob, "stunned", src, "(Combat mode: [user.combat_mode ? "On" : "Off"])")
 
 /obj/item/borg/cyborghug
@@ -83,7 +96,7 @@
 		return
 	switch(mode)
 		if(HUG_MODE_NICE)
-			if(isanimal(attacked_mob))
+			if(isanimal_or_basicmob(attacked_mob))
 				var/list/modifiers = params2list(params)
 				if (!user.combat_mode && !LAZYACCESS(modifiers, RIGHT_CLICK))
 					attacked_mob.attack_hand(user, modifiers) //This enables borgs to get the floating heart icon and mob emote from simple_animal's that have petbonus == true.
@@ -190,6 +203,7 @@
 	. = ..()
 	if(!proximity_flag || !iscyborg(user))
 		return
+	. |= AFTERATTACK_PROCESSED_ITEM
 	if(mode == "draw")
 		if(is_type_in_list(target, charge_machines))
 			var/obj/machinery/target_machine = target
@@ -297,12 +311,13 @@
 	/// Harm alarm cooldown
 	COOLDOWN_DECLARE(alarm_cooldown)
 
-/obj/item/harmalarm/emag_act(mob/user)
+/obj/item/harmalarm/emag_act(mob/user, obj/item/card/emag/emag_card)
 	obj_flags ^= EMAGGED
 	if(obj_flags & EMAGGED)
-		to_chat(user, "<font color='red'>You short out the safeties on [src]!</font>")
+		balloon_alert(user, "safeties shorted")
 	else
-		to_chat(user, "<font color='red'>You reset the safeties on [src]!</font>")
+		balloon_alert(user, "safeties reset")
+	return TRUE
 
 /obj/item/harmalarm/attack_self(mob/user)
 	var/safety = !(obj_flags & EMAGGED)
@@ -321,12 +336,12 @@
 
 	if(safety == TRUE)
 		user.visible_message("<font color='red' size='2'>[user] blares out a near-deafening siren from its speakers!</font>", \
-			span_userdanger("The siren pierces your hearing and confuses you!"), \
+			span_userdanger("Your siren blares around [iscyborg(user) ? "you" : "and confuses you"]!"), \
 			span_danger("The siren pierces your hearing!"))
 		for(var/mob/living/carbon/carbon in get_hearers_in_view(9, user))
 			if(carbon.get_ear_protection())
 				continue
-			carbon.adjust_timed_status_effect(6 SECONDS, /datum/status_effect/confusion)
+			carbon.adjust_confusion(6 SECONDS)
 
 		audible_message("<font color='red' size='7'>HUMAN HARM</font>")
 		playsound(get_turf(src), 'sound/ai/harmalarm.ogg', 70, 3)
@@ -341,14 +356,25 @@
 			var/bang_effect = carbon.soundbang_act(2, 0, 0, 5)
 			switch(bang_effect)
 				if(1)
-					carbon.adjust_timed_status_effect(5 SECONDS, /datum/status_effect/confusion)
-					carbon.adjust_timed_status_effect(20 SECONDS, /datum/status_effect/speech/stutter)
-					carbon.adjust_timed_status_effect(20 SECONDS, /datum/status_effect/jitter)
+					carbon.adjust_confusion(5 SECONDS)
+					carbon.adjust_stutter(20 SECONDS)
+					carbon.adjust_jitter(20 SECONDS)
 				if(2)
 					carbon.Paralyze(40)
-					carbon.adjust_timed_status_effect(10 SECONDS, /datum/status_effect/confusion)
-					carbon.adjust_timed_status_effect(30 SECONDS, /datum/status_effect/speech/stutter)
-					carbon.adjust_timed_status_effect(50 SECONDS, /datum/status_effect/jitter)
+					carbon.adjust_confusion(10 SECONDS)
+					carbon.adjust_stutter(30 SECONDS)
+					carbon.adjust_jitter(50 SECONDS)
 		playsound(get_turf(src), 'sound/machines/warning-buzzer.ogg', 130, 3)
 		COOLDOWN_START(src, alarm_cooldown, HARM_ALARM_NO_SAFETY_COOLDOWN)
 		user.log_message("used an emagged Cyborg Harm Alarm", LOG_ATTACK)
+
+#undef HUG_MODE_NICE
+#undef HUG_MODE_HUG
+#undef HUG_MODE_SHOCK
+#undef HUG_MODE_CRUSH
+
+#undef HUG_SHOCK_COOLDOWN
+#undef HUG_CRUSH_COOLDOWN
+
+#undef HARM_ALARM_NO_SAFETY_COOLDOWN
+#undef HARM_ALARM_SAFETY_COOLDOWN

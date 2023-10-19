@@ -23,15 +23,28 @@
 	/// Maximum timer for c4 charges
 	var/maximum_timer = 60000
 
+/obj/item/grenade/c4/apply_grenade_fantasy_bonuses(quality)
+	var/devIncrease = round(quality / 10)
+	var/heavyIncrease = round(quality / 5)
+	var/lightIncrease = round(quality / 2)
+	boom_sizes[1] = modify_fantasy_variable("devIncrease", boom_sizes[1], devIncrease)
+	boom_sizes[2] = modify_fantasy_variable("heavyIncrease", boom_sizes[2], heavyIncrease)
+	boom_sizes[3] = modify_fantasy_variable("lightIncrease", boom_sizes[3], lightIncrease)
+
+/obj/item/grenade/c4/remove_grenade_fantasy_bonuses(quality)
+	boom_sizes[1] = reset_fantasy_variable("devIncrease", boom_sizes[1])
+	boom_sizes[2] = reset_fantasy_variable("heavyIncrease", boom_sizes[2])
+	boom_sizes[3] = reset_fantasy_variable("lightIncrease", boom_sizes[3])
+
 /obj/item/grenade/c4/Initialize(mapload)
 	. = ..()
 	AddElement(/datum/element/empprotection, EMP_PROTECT_WIRES)
 	plastic_overlay = mutable_appearance(icon, "[inhand_icon_state]2", HIGH_OBJ_LAYER)
-	wires = new /datum/wires/explosive/c4(src)
+	set_wires(new /datum/wires/explosive/c4(src))
 
 /obj/item/grenade/c4/Destroy()
 	qdel(wires)
-	wires = null
+	set_wires(null)
 	target = null
 	return ..()
 
@@ -77,7 +90,7 @@
 
 /obj/item/grenade/c4/attack_self(mob/user)
 	var/newtime = tgui_input_number(user, "Please set the timer", "C4 Timer", minimum_timer, maximum_timer, minimum_timer)
-	if(!newtime || QDELETED(user) || QDELETED(src) || !usr.canUseTopic(src, BE_CLOSE, FALSE, NO_TK))
+	if(!newtime || QDELETED(user) || QDELETED(src) || !usr.can_perform_action(src, FORBID_TELEKINESIS_REACH))
 		return
 	det_time = newtime
 	to_chat(user, "Timer set for [det_time] seconds.")
@@ -85,17 +98,22 @@
 /obj/item/grenade/c4/afterattack(atom/movable/bomb_target, mob/user, flag)
 	. = ..()
 	aim_dir = get_dir(user, bomb_target)
+	if(isdead(bomb_target))
+		return
 	if(!flag)
 		return
+
+	. |= AFTERATTACK_PROCESSED_ITEM
+
 	if(bomb_target != user && HAS_TRAIT(user, TRAIT_PACIFISM) && isliving(bomb_target))
 		to_chat(user, span_warning("You don't want to harm other living beings!"))
-		return
+		return .
 
 	to_chat(user, span_notice("You start planting [src]. The timer is set to [det_time]..."))
 
 	if(do_after(user, 30, target = bomb_target))
 		if(!user.temporarilyRemoveItemFromInventory(src))
-			return
+			return .
 		target = bomb_target
 		active = TRUE
 
@@ -117,7 +135,9 @@
 
 		target.add_overlay(plastic_overlay)
 		to_chat(user, span_notice("You plant the bomb. Timer counting down from [det_time]."))
-		addtimer(CALLBACK(src, .proc/detonate), det_time*10)
+		addtimer(CALLBACK(src, PROC_REF(detonate)), det_time*10)
+
+	return .
 
 /obj/item/grenade/c4/proc/shout_syndicate_crap(mob/player)
 	if(!player)

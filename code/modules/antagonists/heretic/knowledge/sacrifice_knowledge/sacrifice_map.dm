@@ -46,7 +46,7 @@ GLOBAL_LIST_EMPTY(heretic_sacrifice_landmarks)
 /obj/structure/no_effect_signpost
 	name = "signpost"
 	desc = "Won't somebody give me a sign?"
-	icon = 'icons/obj/stationobjs.dmi'
+	icon = 'icons/obj/fluff/general.dmi'
 	icon_state = "signpost"
 	anchored = TRUE
 	density = TRUE
@@ -69,6 +69,7 @@ GLOBAL_LIST_EMPTY(heretic_sacrifice_landmarks)
 	nightshift_allowed = FALSE
 	bulb_colour = "#d6b6a6ff"
 	brightness = 3
+	fire_brightness = 2
 	bulb_power = 0.5
 
 /obj/machinery/light/very_dim/directional/north

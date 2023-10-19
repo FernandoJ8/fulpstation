@@ -2,7 +2,7 @@
 /obj/item/melee/sickly_blade
 	name = "\improper sickly blade"
 	desc = "A sickly green crescent blade, decorated with an ornamental eye. You feel like you're being watched..."
-	icon = 'icons/obj/eldritch.dmi'
+	icon = 'icons/obj/weapons/khopesh.dmi'
 	icon_state = "eldritch_blade"
 	inhand_icon_state = "eldritch_blade"
 	lefthand_file = 'icons/mob/inhands/64x64_lefthand.dmi'
@@ -14,6 +14,7 @@
 	w_class = WEIGHT_CLASS_NORMAL
 	force = 20
 	throwforce = 10
+	toolspeed = 0.375
 	demolition_mod = 0.8
 	hitsound = 'sound/weapons/bladeslice.ogg'
 	armour_penetration = 35
@@ -76,6 +77,7 @@
 	icon_state = "ash_blade"
 	inhand_icon_state = "ash_blade"
 	after_use_message = "The Nightwatcher hears your call..."
+	resistance_flags = FIRE_PROOF
 
 // Path of Flesh's blade
 /obj/item/melee/sickly_blade/flesh
@@ -95,11 +97,21 @@
 	inhand_icon_state = "void_blade"
 	after_use_message = "The Aristocrat hears your call..."
 
-// Path of the Blade's... blade
-// Opting for /dark (darkened blade) instead of /blade to avoid "sickly_blade/blade".
+// Path of the Blade's... blade.
+// Opting for /dark instead of /blade to avoid "sickly_blade/blade".
 /obj/item/melee/sickly_blade/dark
-	name = "\improper darkened blade"
-	desc = "A blade made of brilliant silver that shines gloriously. Unknown rage is bottled within."
+	name = "\improper sundered blade"
+	desc = "A galliant blade, sundered and torn. \
+		Furiously, the blade cuts. Silver scars bind it forever to its dark purpose."
 	icon_state = "dark_blade"
 	inhand_icon_state = "dark_blade"
 	after_use_message = "The Torn Champion hears your call..."
+
+// Path of Cosmos's blade
+/obj/item/melee/sickly_blade/cosmic
+	name = "\improper cosmic blade"
+	desc = "A mote of celestial resonance, shaped into a star-woven blade. \
+		An iridescent exile, carving radiant trails, desperately seeking unification."
+	icon_state = "cosmic_blade"
+	inhand_icon_state = "cosmic_blade"
+	after_use_message = "The Stargazer hears your call..."

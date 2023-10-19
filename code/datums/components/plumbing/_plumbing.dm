@@ -50,19 +50,20 @@
 	if(start)
 		//We're registering here because I need to check whether we start active or not, and this is just easier
 		//Should be called after we finished. Done this way because other networks need to finish setting up aswell
-		RegisterSignal(parent, list(COMSIG_COMPONENT_ADDED), .proc/enable)
+		RegisterSignal(parent, COMSIG_COMPONENT_ADDED, PROC_REF(enable))
 
 /datum/component/plumbing/RegisterWithParent()
-	RegisterSignal(parent, list(COMSIG_MOVABLE_MOVED, COMSIG_PARENT_QDELETING), .proc/disable)
-	RegisterSignal(parent, list(COMSIG_OBJ_DEFAULT_UNFASTEN_WRENCH), .proc/toggle_active)
-	RegisterSignal(parent, list(COMSIG_OBJ_HIDE), .proc/hide)
-	RegisterSignal(parent, list(COMSIG_ATOM_UPDATE_OVERLAYS), .proc/create_overlays) //called by lateinit on startup
-	RegisterSignal(parent, list(COMSIG_ATOM_DIR_CHANGE), .proc/on_parent_dir_change) //called when placed on a shuttle and it moves, and other edge cases
-	RegisterSignal(parent, list(COMSIG_MOVABLE_CHANGE_DUCT_LAYER), .proc/change_ducting_layer)
+	RegisterSignals(parent, list(COMSIG_MOVABLE_MOVED, COMSIG_QDELETING), PROC_REF(disable))
+	RegisterSignals(parent, list(COMSIG_OBJ_DEFAULT_UNFASTEN_WRENCH), PROC_REF(toggle_active))
+	RegisterSignal(parent, COMSIG_OBJ_HIDE, PROC_REF(hide))
+	RegisterSignal(parent, COMSIG_ATOM_UPDATE_OVERLAYS, PROC_REF(create_overlays)) //called by lateinit on startup
+	RegisterSignal(parent, COMSIG_ATOM_DIR_CHANGE, PROC_REF(on_parent_dir_change)) //called when placed on a shuttle and it moves, and other edge cases
+	RegisterSignal(parent, COMSIG_MOVABLE_CHANGE_DUCT_LAYER, PROC_REF(change_ducting_layer))
 
 /datum/component/plumbing/UnregisterFromParent()
-	UnregisterSignal(parent, list(COMSIG_MOVABLE_MOVED, COMSIG_PARENT_QDELETING, COMSIG_OBJ_DEFAULT_UNFASTEN_WRENCH, COMSIG_OBJ_HIDE, \
+	UnregisterSignal(parent, list(COMSIG_MOVABLE_MOVED, COMSIG_QDELETING, COMSIG_OBJ_DEFAULT_UNFASTEN_WRENCH, COMSIG_OBJ_HIDE, \
 	COMSIG_ATOM_UPDATE_OVERLAYS, COMSIG_ATOM_DIR_CHANGE, COMSIG_MOVABLE_CHANGE_DUCT_LAYER, COMSIG_COMPONENT_ADDED))
+	REMOVE_TRAIT(parent, TRAIT_UNDERFLOOR, REF(src))
 
 /datum/component/plumbing/Destroy()
 	ducts = null
@@ -173,9 +174,9 @@
 
 		var/image/overlay
 		if(turn_connects)
-			overlay = image('icons/obj/plumbing/connects.dmi', "[direction_text]-[ducting_layer]", layer = duct_layer)
+			overlay = image('icons/obj/pipes_n_cables/hydrochem/connects.dmi', "[direction_text]-[ducting_layer]", layer = duct_layer)
 		else
-			overlay = image('icons/obj/plumbing/connects.dmi', "[direction_text]-[ducting_layer]-s", layer = duct_layer)
+			overlay = image('icons/obj/pipes_n_cables/hydrochem/connects.dmi', "[direction_text]-[ducting_layer]-s", layer = duct_layer)
 			overlay.dir = direction
 
 		overlay.color = color
@@ -186,7 +187,7 @@
 
 		// This is a little wiggley extension to make wallmounts like sinks and showers visually link to the pipe
 		if(extend_pipe_to_edge && !extension_handled)
-			var/image/edge_overlay = image('icons/obj/plumbing/connects.dmi', "edge-extension", layer = duct_layer)
+			var/image/edge_overlay = image('icons/obj/pipes_n_cables/hydrochem/connects.dmi', "edge-extension", layer = duct_layer)
 			edge_overlay.dir = parent_movable.dir
 			edge_overlay.color = color
 			edge_overlay.pixel_x = -parent_movable.pixel_x - parent_movable.pixel_w
@@ -216,7 +217,7 @@
 		for(var/obj/machinery/duct/duct in get_step(parent, direction))
 			if(!(duct.duct_layer & ducting_layer))
 				continue
-			duct.remove_connects(turn(direction, 180))
+			duct.remove_connects(REVERSE_DIR(direction))
 			duct.neighbours.Remove(parent)
 			duct.update_appearance()
 
@@ -301,18 +302,25 @@
 /datum/component/plumbing/proc/direct_connect(datum/component/plumbing/plumbing, dir)
 	if(!plumbing.active)
 		return
-	var/opposite_dir = turn(dir, 180)
+	var/opposite_dir = REVERSE_DIR(dir)
 	if(plumbing.demand_connects & opposite_dir && supply_connects & dir || plumbing.supply_connects & opposite_dir && demand_connects & dir) //make sure we arent connecting two supplies or demands
 		var/datum/ductnet/net = new()
 		net.add_plumber(src, dir)
 		net.add_plumber(plumbing, opposite_dir)
 
-/datum/component/plumbing/proc/hide(atom/movable/parent_obj, should_hide)
+/datum/component/plumbing/proc/hide(atom/movable/parent_obj, underfloor_accessibility)
 	SIGNAL_HANDLER
 
 	// If machine is unanchored, keep connector visible.
 	// This doesn't necessary map to `active`, so check parent.
 	var/atom/movable/parent_movable = parent
+
+	var/should_hide = !underfloor_accessibility
+
+	if(should_hide)
+		ADD_TRAIT(parent_obj, TRAIT_UNDERFLOOR, REF(src))
+	else
+		REMOVE_TRAIT(parent_obj, TRAIT_UNDERFLOOR, REF(src))
 
 	if(parent_movable.anchored || !should_hide)
 		tile_covered = should_hide
@@ -335,9 +343,9 @@
 
 /datum/component/plumbing/proc/set_recipient_reagents_holder(datum/reagents/receiver)
 	if(recipient_reagents_holder)
-		UnregisterSignal(recipient_reagents_holder, COMSIG_PARENT_QDELETING) //stop tracking whoever we were tracking
+		UnregisterSignal(recipient_reagents_holder, COMSIG_QDELETING) //stop tracking whoever we were tracking
 	if(receiver)
-		RegisterSignal(receiver, COMSIG_PARENT_QDELETING, .proc/handle_reagent_del) //on deletion call a wrapper proc that clears us, and maybe reagents too
+		RegisterSignal(receiver, COMSIG_QDELETING, PROC_REF(handle_reagent_del)) //on deletion call a wrapper proc that clears us, and maybe reagents too
 
 	recipient_reagents_holder = receiver
 
@@ -358,7 +366,7 @@
 		return
 
 	// Defer to later frame because pixel_* is actually updated after all callbacks
-	addtimer(CALLBACK(parent_obj, /atom/.proc/update_appearance), 1)
+	addtimer(CALLBACK(parent_obj, TYPE_PROC_REF(/atom/, update_appearance)), 1)
 
 ///has one pipe input that only takes, example is manual output pipe
 /datum/component/plumbing/simple_demand

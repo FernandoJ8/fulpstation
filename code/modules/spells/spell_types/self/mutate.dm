@@ -26,7 +26,7 @@
 	. = ..()
 	for(var/mutation in mutations_to_add)
 		cast_on.dna.add_mutation(mutation)
-	addtimer(CALLBACK(src, .proc/remove_mutations, cast_on), mutation_duration, TIMER_DELETE_ME)
+	addtimer(CALLBACK(src, PROC_REF(remove_mutations), cast_on), mutation_duration, TIMER_DELETE_ME)
 
 /// Removes the mutations we added from casting our spell
 /datum/action/cooldown/spell/apply_mutations/proc/remove_mutations(mob/living/carbon/human/cast_on)
@@ -40,7 +40,8 @@
 	name = "Mutate"
 	desc = "This spell causes you to turn into a hulk and gain laser vision for a short while."
 	cooldown_time = 40 SECONDS
-	cooldown_reduction_per_rank = 2.5 SECONDS
+	cooldown_reduction_per_rank = 5 SECONDS
+	spell_max_level = 3
 
 	invocation = "BIRUZ BENNAR"
 	invocation_type = INVOCATION_SHOUT

@@ -37,7 +37,7 @@
 		to_chat(src, span_revenwarning("You are already siphoning the essence of a soul!"))
 		return
 	if(!target.stat)
-		to_chat(src, span_revennotice("[target.p_their(TRUE)] soul is too strong to harvest."))
+		to_chat(src, span_revennotice("[target.p_Their()] soul is too strong to harvest."))
 		if(prob(10))
 			to_chat(target, span_revennotice("You feel as if you are being watched."))
 		return
@@ -48,16 +48,16 @@
 	to_chat(src, span_revennotice("You search for the soul of [target]."))
 	if(do_after(src, rand(10, 20), target, timed_action_flags = IGNORE_HELD_ITEM)) //did they get deleted in that second?
 		if(target.ckey)
-			to_chat(src, span_revennotice("[target.p_their(TRUE)] soul burns with intelligence."))
+			to_chat(src, span_revennotice("[target.p_Their()] soul burns with intelligence."))
 			essence_drained += rand(20, 30)
 		if(target.stat != DEAD && !HAS_TRAIT(target, TRAIT_WEAK_SOUL))
-			to_chat(src, span_revennotice("[target.p_their(TRUE)] soul blazes with life!"))
+			to_chat(src, span_revennotice("[target.p_Their()] soul blazes with life!"))
 			essence_drained += rand(40, 50)
 		if(HAS_TRAIT(target, TRAIT_WEAK_SOUL) && !target.ckey)
-			to_chat(src, span_revennotice("[target.p_their(TRUE)] soul is weak and underdeveloped. They won't be worth very much."))
+			to_chat(src, span_revennotice("[target.p_Their()] soul is weak and underdeveloped. They won't be worth very much."))
 			essence_drained = 5
 		else
-			to_chat(src, span_revennotice("[target.p_their(TRUE)] soul is weak and faltering."))
+			to_chat(src, span_revennotice("[target.p_Their()] soul is weak and faltering."))
 		if(do_after(src, rand(15, 20), target, timed_action_flags = IGNORE_HELD_ITEM)) //did they get deleted NOW?
 			switch(essence_drained)
 				if(1 to 30)
@@ -70,7 +70,7 @@
 					to_chat(src, span_revenbignotice("Ah, the perfect soul. [target] will yield massive amounts of essence to you."))
 			if(do_after(src, rand(15, 25), target, timed_action_flags = IGNORE_HELD_ITEM)) //how about now
 				if(!target.stat)
-					to_chat(src, span_revenwarning("[target.p_theyre(TRUE)] now powerful enough to fight off your draining."))
+					to_chat(src, span_revenwarning("[target.p_Theyre()] now powerful enough to fight off your draining."))
 					to_chat(target, span_boldannounce("You feel something tugging across your body before subsiding."))
 					draining = 0
 					essence_drained = 0
@@ -103,9 +103,11 @@
 					target.visible_message(span_warning("[target] slumps onto the ground."), \
 										   span_revenwarning("Violets lights, dancing in your vision, getting clo--"))
 					drained_mobs += REF(target)
-					target.death(0)
+					if(target.stat != DEAD)
+						target.investigate_log("has died from revenant harvest.", INVESTIGATE_DEATHS)
+					target.death(FALSE)
 				else
-					to_chat(src, span_revenwarning("[target ? "[target] has":"[target.p_theyve(TRUE)]"] been drawn out of your grasp. The link has been broken."))
+					to_chat(src, span_revenwarning("[target ? "[target] has":"[target.p_Theyve()]"] been drawn out of your grasp. The link has been broken."))
 					if(target) //Wait, target is WHERE NOW?
 						target.visible_message(span_warning("[target] slumps onto the ground."), \
 											   span_revenwarning("Violets lights, dancing in your vision, receding--"))
@@ -115,20 +117,12 @@
 	draining = FALSE
 	essence_drained = 0
 
-//Toggle night vision: lets the revenant toggle its night vision
-/datum/action/cooldown/spell/night_vision/revenant
-	name = "Toggle Darkvision"
-	panel = "Revenant Abilities"
-	background_icon_state = "bg_revenant"
-	icon_icon = 'icons/mob/actions/actions_revenant.dmi'
-	button_icon_state = "r_nightvision"
-	toggle_span = "revennotice"
-
 //Transmit: the revemant's only direct way to communicate. Sends a single message silently to a single mob
 /datum/action/cooldown/spell/list_target/telepathy/revenant
 	name = "Revenant Transmit"
 	panel = "Revenant Abilities"
 	background_icon_state = "bg_revenant"
+	overlay_icon_state = "bg_revenant_border"
 
 	telepathy_span = "revennotice"
 	bold_telepathy_span = "revenboldnotice"
@@ -138,7 +132,8 @@
 /datum/action/cooldown/spell/aoe/revenant
 	panel = "Revenant Abilities (Locked)"
 	background_icon_state = "bg_revenant"
-	icon_icon = 'icons/mob/actions/actions_revenant.dmi'
+	overlay_icon_state = "bg_revenant_border"
+	button_icon = 'icons/mob/actions/actions_revenant.dmi'
 
 	antimagic_flags = MAGIC_RESISTANCE_HOLY
 	spell_requirements = NONE
@@ -195,7 +190,7 @@
 /datum/action/cooldown/spell/aoe/revenant/before_cast(mob/living/simple_animal/revenant/cast_on)
 	. = ..()
 	if(. & SPELL_CANCEL_CAST)
-		return FALSE
+		return
 
 	if(locked)
 		if(!cast_on.unlock(unlock_amount))
@@ -248,7 +243,7 @@
 		light_sparks.set_up(4, 0, light)
 		light_sparks.start()
 		new /obj/effect/temp_visual/revenant(get_turf(light))
-		addtimer(CALLBACK(src, .proc/overload_shock, light, caster), 20)
+		addtimer(CALLBACK(src, PROC_REF(overload_shock), light, caster), 20)
 
 /datum/action/cooldown/spell/aoe/revenant/overload/proc/overload_shock(obj/machinery/light/to_shock, mob/living/simple_animal/revenant/caster)
 	flick("[to_shock.base_state]2", to_shock)
@@ -403,6 +398,56 @@
 		tray.set_pestlevel(rand(8, 10))
 		tray.set_weedlevel(rand(8, 10))
 		tray.set_toxic(rand(45, 55))
+
+/datum/action/cooldown/spell/aoe/revenant/haunt_object
+	name = "Haunt Object"
+	desc = "Empower nearby objects to you with ghostly energy, causing them to attack nearby mortals. \
+		Items closer to you are more likely to be haunted."
+	button_icon_state = "r_haunt"
+	max_targets = 7
+	aoe_radius = 5
+
+	unlock_amount = 30 // Similar to overload lights
+	cast_amount = 50 // but has a longer lasting effect
+	stun_duration = 3 SECONDS
+	reveal_duration = 6 SECONDS
+
+/datum/action/cooldown/spell/aoe/revenant/haunt_object/get_things_to_cast_on(atom/center)
+	var/list/things = list()
+	for(var/obj/item/nearby_item in range(aoe_radius, center))
+		// Don't throw around anchored things or dense things
+		// (Or things not on a turf but I am not sure if range can catch that)
+		if(nearby_item.anchored || nearby_item.density || !isturf(nearby_item.loc))
+			continue
+		// Don't throw abstract things
+		if(nearby_item.item_flags & ABSTRACT)
+			continue
+		// Don't throw things we can't see
+		if(nearby_item.invisibility >= INVISIBILITY_REVENANT)
+			continue
+		// Don't throw things that are already throwing themself
+		if(istype(nearby_item.ai_controller, /datum/ai_controller/haunted))
+			continue
+
+		things += nearby_item
+
+	return things
+
+/datum/action/cooldown/spell/aoe/revenant/haunt_object/cast_on_thing_in_aoe(obj/item/victim, mob/living/simple_animal/revenant/caster)
+	var/distance_from_caster = get_dist(get_turf(victim), get_turf(caster))
+	var/chance_of_haunting = 150 * (1 / distance_from_caster)
+	if(!prob(chance_of_haunting))
+		return
+
+	new /obj/effect/temp_visual/revenant(get_turf(victim))
+
+	victim.AddComponent(/datum/component/haunted_item, \
+		haunt_color = "#823abb", \
+		haunt_duration = rand(1 MINUTES, 3 MINUTES), \
+		aggro_radius = aoe_radius - 1, \
+		spawn_message = span_revenwarning("[victim] begins to float and twirl into the air as it glows a ghastly purple!"), \
+		despawn_message = span_revenwarning("[victim] falls back to the ground, stationary once more."), \
+	)
 
 #undef REVENANT_DEFILE_MIN_DAMAGE
 #undef REVENANT_DEFILE_MAX_DAMAGE

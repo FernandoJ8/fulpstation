@@ -1,4 +1,4 @@
-/datum/action/bloodsucker/veil
+/datum/action/cooldown/bloodsucker/veil
 	name = "Veil of Many Faces"
 	desc = "Disguise yourself in the illusion of another identity."
 	button_icon_state = "power_veil"
@@ -8,10 +8,10 @@
 		Clothes, gear, and Security/Medical HUD status is kept the same while this power is active."
 	power_flags = BP_AM_TOGGLE
 	check_flags = BP_CANT_USE_IN_FRENZY
-	purchase_flags = VASSAL_CAN_BUY
+	purchase_flags = BLOODSUCKER_DEFAULT_POWER|VASSAL_CAN_BUY
 	bloodcost = 15
 	constant_bloodcost = 0.1
-	cooldown = 10 SECONDS
+	cooldown_time = 10 SECONDS
 	// Outfit Vars
 //	var/list/original_items = list()
 	// Identity Vars
@@ -26,8 +26,9 @@
 	var/prev_socks
 	var/prev_disfigured
 	var/list/prev_features // For lizards and such
+	var/disguise_name
 
-/datum/action/bloodsucker/veil/ActivatePower()
+/datum/action/cooldown/bloodsucker/veil/ActivatePower(trigger_flags)
 	. = ..()
 	cast_effect() // POOF
 //	if(blahblahblah)
@@ -36,20 +37,18 @@
 	owner.balloon_alert(owner, "veil turned on.")
 
 /* // Meant to disguise your character's clothing into fake ones.
-/datum/action/bloodsucker/veil/proc/Disguise_Outfit()
+/datum/action/cooldown/bloodsucker/veil/proc/Disguise_Outfit()
 	return
 	// Step One: Back up original items
 */
 
-/datum/action/bloodsucker/veil/proc/veil_user()
+/datum/action/cooldown/bloodsucker/veil/proc/veil_user()
 	// Change Name/Voice
 	var/mob/living/carbon/human/user = owner
-	user.name_override = user.dna.species.random_name(user.gender)
-	user.name = user.name_override
-	user.SetSpecialVoice(user.name_override)
 	to_chat(owner, span_warning("You mystify the air around your person. Your identity is now altered."))
 
 	// Store Prev Appearance
+	disguise_name = user.dna.species.random_name(user.gender)
 	prev_gender = user.gender
 	prev_skin_tone = user.skin_tone
 	prev_hair_style = user.hairstyle
@@ -64,11 +63,11 @@
 	prev_features = user.dna.features
 
 	// Change Appearance
-	user.gender = pick(MALE, FEMALE, PLURAL)
+	user.gender = pick(MALE, FEMALE, PLURAL, NEUTER)
 	user.skin_tone = random_skin_tone()
 	user.hairstyle = random_hairstyle(user.gender)
 	user.facial_hairstyle = pick(random_facial_hairstyle(user.gender), "Shaved")
-	user.hair_color = random_short_color()
+	user.hair_color = "#[random_short_color()]"
 	user.facial_hair_color = user.hair_color
 	user.underwear = random_underwear(user.gender)
 	user.undershirt = random_undershirt(user.gender)
@@ -79,21 +78,25 @@
 	user.dna.features = random_features()
 
 	// Apply Appearance
-	user.update_body() // Outfit and underware, also body.
+	user.update_body(is_creating = TRUE) // Outfit and underware, also body.
 	user.update_mutant_bodyparts() // Lizard tails etc
-	user.update_hair()
-	user.update_body_parts()
+	user.update_body_parts(update_limb_data = TRUE)
 
-/datum/action/bloodsucker/veil/DeactivatePower()
+	RegisterSignal(user, COMSIG_HUMAN_GET_VISIBLE_NAME, PROC_REF(return_disguise_name))
+
+/datum/action/cooldown/bloodsucker/veil/proc/return_disguise_name(mob/living/carbon/human/user, list/identity)
+	SIGNAL_HANDLER
+
+	identity[VISIBLE_NAME_FACE] = disguise_name
+	user.SetSpecialVoice(disguise_name)
+
+/datum/action/cooldown/bloodsucker/veil/DeactivatePower()
 	. = ..()
 	if(!ishuman(owner))
 		return
 	var/mob/living/carbon/human/user = owner
-
 	// Revert Identity
 	user.UnsetSpecialVoice()
-	user.name_override = null
-	user.name = user.real_name
 
 	// Revert Appearance
 	user.gender = prev_gender
@@ -113,16 +116,17 @@
 	user.dna.features = prev_features
 
 	// Apply Appearance
-	user.update_body() // Outfit and underware, also body.
-	user.update_hair()
-	user.update_body_parts() // Body itself, maybe skin color?
+	user.update_body(is_creating = TRUE) // Outfit and underware, also body.
+	user.update_body_parts(update_limb_data = TRUE) // Body itself, maybe skin color?
 
 	cast_effect() // POOF
 	owner.balloon_alert(owner, "veil turned off.")
 
+	UnregisterSignal(user, COMSIG_HUMAN_GET_VISIBLE_NAME)
+
 
 // CAST EFFECT // General effect (poof, splat, etc) when you cast. Doesn't happen automatically!
-/datum/action/bloodsucker/veil/proc/cast_effect()
+/datum/action/cooldown/bloodsucker/veil/proc/cast_effect()
 	// Effect
 	playsound(get_turf(owner), 'sound/magic/smoke.ogg', 20, 1)
 	var/datum/effect_system/steam_spread/bloodsucker/puff = new /datum/effect_system/steam_spread/()

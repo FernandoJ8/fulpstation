@@ -1,5 +1,5 @@
 /// The max range we can zoom in on people from.
-#define MAX_LIONHUNTER_RANGE 16
+#define MAX_LIONHUNTER_RANGE 30
 
 // The Lionhunter, a gun for heretics
 // The ammo it uses takes time to "charge" before firing,
@@ -11,12 +11,12 @@
 	icon_state = "moistprime"
 	inhand_icon_state = "moistprime"
 	worn_icon_state = "moistprime"
-	mag_type = /obj/item/ammo_box/magazine/internal/boltaction/lionhunter
+	accepted_magazine_type = /obj/item/ammo_box/magazine/internal/boltaction/lionhunter
 	fire_sound = 'sound/weapons/gun/sniper/shot.ogg'
 
 /obj/item/gun/ballistic/rifle/lionhunter/Initialize(mapload)
 	. = ..()
-	AddComponent(/datum/component/scope, range_modifier = 1.25)
+	AddComponent(/datum/component/scope, range_modifier = 3.2)
 
 /obj/item/ammo_box/magazine/internal/boltaction/lionhunter
 	name = "lionhunter rifle internal magazine"
@@ -84,7 +84,7 @@
 	animate(reticle, fire_time * 0.5, transform = turn(reticle.transform, 180))
 
 	currently_aiming = TRUE
-	. = do_after(user, fire_time, target, IGNORE_TARGET_LOC_CHANGE, extra_checks = CALLBACK(src, .proc/check_fire_callback, target, user))
+	. = do_after(user, fire_time, target, IGNORE_TARGET_LOC_CHANGE, extra_checks = CALLBACK(src, PROC_REF(check_fire_callback), target, user))
 	currently_aiming = FALSE
 
 	animate(reticle, 0.5 SECONDS, alpha = 0)
@@ -113,7 +113,7 @@
 	// BUT, if we're at a decent range and the target's a living mob,
 	// the projectile's been channel fired. It has full effects and homes in.
 	if(distance > min_distance && isliving(target) && iscarbon(user))
-		loaded_projectile.damage *= 1.33
+		loaded_projectile.damage *= 2
 		loaded_projectile.stamina *= 2
 		loaded_projectile.knockdown = 0.5 SECONDS
 		loaded_projectile.stutter = 6 SECONDS

@@ -80,7 +80,38 @@
 	heavy_brute_msg = "mincemeat"
 	heavy_burn_msg = "burned to a crisp"
 	limb_id = SPECIES_BEEFMAN
+	damage_examines = list(BRUTE = BEEF_BRUTE_EXAMINE_TEXT, BURN = BEEF_BURN_EXAMINE_TEXT, CLONE = DEFAULT_CLONE_EXAMINE_TEXT)
 	is_dimorphic = FALSE
+	icon_state = "beefman_head"
+	head_flags = HEAD_HAIR
+
+/obj/item/bodypart/head/beef/Initialize(mapload)
+	worn_ears_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_EARS,
+		offset_y = list("south" = 2),
+	)
+	worn_glasses_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_GLASSES,
+		offset_y = list("south" = 3),
+	)
+	worn_head_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_HEAD,
+		offset_y = list("south" = 3),
+	)
+	worn_mask_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_FACEMASK,
+		offset_y = list("south" = 3),
+	)
+	worn_face_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_FACE,
+		offset_y = list("south" = 3),
+	)
+	return ..()
 
 /obj/item/bodypart/chest/beef
 	icon = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
@@ -88,16 +119,75 @@
 	heavy_brute_msg = "mincemeat"
 	heavy_burn_msg = "burned to a crisp"
 	limb_id = SPECIES_BEEFMAN
+	damage_examines = list(BRUTE = BEEF_BRUTE_EXAMINE_TEXT, BURN = BEEF_BURN_EXAMINE_TEXT, CLONE = DEFAULT_CLONE_EXAMINE_TEXT)
 	is_dimorphic = FALSE
+	icon_state = "beefman_chest"
 
-/obj/item/bodypart/r_arm/beef
+/obj/item/bodypart/chest/beef/Initialize(mapload)
+	worn_uniform_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_UNIFORM,
+		offset_y = list("south" = 2),
+	)
+	worn_id_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_ID,
+		offset_y = list("south" = 2),
+	)
+	worn_suit_storage_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_S_STORE,
+		offset_y = list("south" = 2),
+	)
+	worn_belt_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_BELT,
+		offset_y = list("south" = 3),
+	)
+	worn_back_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_BACK,
+		offset_y = list("south" = 2),
+	)
+	worn_suit_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_SUIT,
+		offset_y = list("south" = 2),
+	)
+	worn_neck_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_NECK,
+		offset_y = list("south" = 2),
+	)
+	return ..()
+
+/obj/item/bodypart/arm/right/beef
 	icon = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
 	icon_greyscale = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
+	unarmed_attack_sound = 'fulp_modules/features/species/sounds/beef_hit.ogg'
+	unarmed_attack_verb = "meat"
+	unarmed_damage_low = 1
+	unarmed_damage_high = 5
 	heavy_brute_msg = "mincemeat"
 	heavy_burn_msg = "burned to a crisp"
 	limb_id = SPECIES_BEEFMAN
+	damage_examines = list(BRUTE = BEEF_BRUTE_EXAMINE_TEXT, BURN = BEEF_BURN_EXAMINE_TEXT, CLONE = DEFAULT_CLONE_EXAMINE_TEXT)
+	icon_state = "beefman_r_arm"
 
-/obj/item/bodypart/r_arm/beef/drop_limb(special)
+/obj/item/bodypart/arm/right/beef/Initialize(mapload)
+	worn_glove_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_GLOVES,
+		offset_y = list("south" = -4),
+	)
+	held_hand_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_HELD,
+		offset_y = list("south" = -4),
+	)
+	return ..()
+
+/obj/item/bodypart/arm/right/beef/drop_limb(special)
 	var/mob/living/carbon/owner_cache = owner
 	..()
 	if(!special)
@@ -105,14 +195,33 @@
 		qdel(src)
 		return new_meat
 
-/obj/item/bodypart/l_arm/beef
+/obj/item/bodypart/arm/left/beef
 	icon = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
 	icon_greyscale = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
+	unarmed_attack_sound = 'fulp_modules/features/species/sounds/beef_hit.ogg'
+	unarmed_attack_verb = "meat"
+	unarmed_damage_low = 1
+	unarmed_damage_high = 5
 	heavy_brute_msg = "mincemeat"
 	heavy_burn_msg = "burned to a crisp"
+	damage_examines = list(BRUTE = BEEF_BRUTE_EXAMINE_TEXT, BURN = BEEF_BURN_EXAMINE_TEXT, CLONE = DEFAULT_CLONE_EXAMINE_TEXT)
 	limb_id = SPECIES_BEEFMAN
+	icon_state = "beefman_l_arm"
 
-/obj/item/bodypart/l_arm/beef/drop_limb(special)
+/obj/item/bodypart/arm/left/beef/Initialize(mapload)
+	worn_glove_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_GLOVES,
+		offset_y = list("south" = -4),
+	)
+	held_hand_offset = new(
+		attached_part = src,
+		feature_key = OFFSET_HELD,
+		offset_y = list("south" = -4),
+	)
+	return ..()
+
+/obj/item/bodypart/arm/left/beef/drop_limb(special)
 	var/mob/living/carbon/owner_cache = owner
 	..()
 	if(!special)
@@ -120,14 +229,17 @@
 		qdel(src)
 		return new_meat
 
-/obj/item/bodypart/r_leg/beef
+/obj/item/bodypart/leg/right/beef
 	icon = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
 	icon_greyscale = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
 	heavy_brute_msg = "mincemeat"
 	heavy_burn_msg = "burned to a crisp"
+	damage_examines = list(BRUTE = BEEF_BRUTE_EXAMINE_TEXT, BURN = BEEF_BURN_EXAMINE_TEXT, CLONE = DEFAULT_CLONE_EXAMINE_TEXT)
 	limb_id = SPECIES_BEEFMAN
+	icon_state = "beefman_r_leg"
+	speed_modifier = -0.1
 
-/obj/item/bodypart/r_leg/beef/drop_limb(special)
+/obj/item/bodypart/leg/right/beef/drop_limb(special)
 	var/mob/living/carbon/owner_cache = owner
 	..()
 	if(!special)
@@ -135,14 +247,17 @@
 		qdel(src)
 		return new_meat
 
-/obj/item/bodypart/l_leg/beef
+/obj/item/bodypart/leg/left/beef
 	icon = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
 	icon_greyscale = 'fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi'
 	heavy_brute_msg = "mincemeat"
 	heavy_burn_msg = "burned to a crisp"
+	damage_examines = list(BRUTE = BEEF_BRUTE_EXAMINE_TEXT, BURN = BEEF_BURN_EXAMINE_TEXT, CLONE = DEFAULT_CLONE_EXAMINE_TEXT)
 	limb_id = SPECIES_BEEFMAN
+	icon_state = "beefman_l_leg"
+	speed_modifier = -0.1
 
-/obj/item/bodypart/l_leg/beef/drop_limb(special)
+/obj/item/bodypart/leg/left/beef/drop_limb(special)
 	var/mob/living/carbon/owner_cache = owner
 	..()
 	if(!special)
@@ -150,7 +265,7 @@
 		qdel(src)
 		return new_meat
 
-/mob/living/carbon/human/spread_bodyparts()
+/mob/living/carbon/human/spread_bodyparts(skip_head = FALSE)
 	if(!isbeefman(src))
 		return ..()
 	for(var/obj/item/bodypart/bodypart in bodyparts)

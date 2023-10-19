@@ -5,9 +5,6 @@
 	icon_state = "fishbook"
 	starting_content = "Lot of fish stuff" //book wrappers could use cleaning so this is not necessary
 
-/obj/item/book/fish_catalog/on_read(mob/user)
-	ui_interact(user)
-
 /obj/item/book/fish_catalog/ui_interact(mob/user, datum/tgui/ui)
 	ui = SStgui.try_update_ui(user, src, ui)
 	if(!ui)
@@ -94,10 +91,10 @@
 	.["disliked_bait"] = english_list(bait_list, nothing_text = "None")
 	// Fish traits description
 	var/list/trait_descriptions = list()
-	var/list/fish_traits = fish_list_properties[fishy][NAMEOF(fishy, fishing_traits)]
+	var/list/fish_traits = fish_list_properties[fishy][NAMEOF(fishy, fish_traits)]
 	for(var/fish_trait in fish_traits)
-		var/datum/fishing_trait/trait = fish_trait
-		trait_descriptions += initial(trait.catalog_description)
+		var/datum/fish_trait/trait = GLOB.fish_traits[fish_trait]
+		trait_descriptions += trait.catalog_description
 	if(!length(trait_descriptions))
 		trait_descriptions += "This fish exhibits no special behavior."
 	.["traits"] = trait_descriptions

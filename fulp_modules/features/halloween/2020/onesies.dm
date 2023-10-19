@@ -9,24 +9,22 @@
 	desc = "A heavy jacket made from 'synthetic' animal furs."
 	icon = 'fulp_modules/features/halloween/2020/2020_icons.dmi'
 	worn_icon = 'fulp_modules/features/halloween/2020/2020_icons_worn.dmi'
-	icon_state = "coatwinter"
+	icon_state = "hood_winter"
 	inhand_icon_state = "coatwinter"
 	body_parts_covered = CHEST|GROIN|ARMS|LEGS|FEET
 	cold_protection = CHEST|GROIN|ARMS|LEGS|FEET
 	min_cold_protection_temperature = FIRE_SUIT_MIN_TEMP_PROTECT
-	armor = list(MELEE = 0, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 10, FIRE = 0, ACID = 0)
 
 /obj/item/clothing/head/hooded/onesie
 	name = "winter hood"
 	desc = "A hood attached to a heavy winter jacket."
 	icon = 'fulp_modules/features/halloween/2020/2020_icons.dmi'
+	icon_state = "hood_winter"
 	worn_icon = 'fulp_modules/features/halloween/2020/2020_icons_worn.dmi'
-	icon_state = "winterhood"
 	body_parts_covered = HEAD
 	cold_protection = HEAD
 	min_cold_protection_temperature = FIRE_SUIT_MIN_TEMP_PROTECT
 	flags_inv = HIDEHAIR|HIDEEARS
-	armor = list(MELEE = 0, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 10, FIRE = 0, ACID = 0)
 
 ///Beefman onesie
 /obj/item/clothing/suit/hooded/onesie/beefman
@@ -55,17 +53,19 @@
 	desc = "Sleeping in these can prove hard since you essentially become your own night light."
 	icon_state = "onesie_ethereal0"
 	hoodtype = /obj/item/clothing/head/hooded/onesie/ethereal
-
+	flags_inv = 0
+	actions_types = list(/datum/action/item_action/toggle_hood)
+	/// Whether the hood is flipped up
+	var/hood_up = FALSE
 	///Luminosity when the suit is on
 	var/brightness_on = 1
 	var/on = FALSE
-	flags_inv = 0
-	actions_types = list(/datum/action/item_action/toggle_hood)
 
-/obj/item/clothing/suit/hooded/onesie/ethereal/ToggleHood()
-	if(hood_up)
-		RemoveHood()
-		return
+
+
+
+/obj/item/clothing/suit/hooded/onesie/ethereal/on_hood_up(obj/item/clothing/head/hooded/hood)
+	. = ..()
 	if(ishuman(src.loc))
 		var/mob/living/carbon/human/user = src.loc
 		if(user.wear_suit != src)
@@ -80,7 +80,11 @@
 			user.update_worn_oversuit()
 			for(var/all_selections in actions)
 				var/datum/action/onesie_options = all_selections
-				onesie_options.UpdateButton()
+				onesie_options.build_all_button_icons()
+
+/obj/item/clothing/suit/hooded/onesie/ethereal/on_hood_down(obj/item/clothing/head/hooded/hood)
+	. = ..()
+	hood_up = FALSE
 
 /obj/item/clothing/suit/hooded/onesie/ethereal/proc/toggle_suit_light(mob/living/user)
 	on = !on
@@ -199,7 +203,7 @@
 /obj/item/clothing/head/hooded/onesie/fly/equipped(mob/user, slot)
 	. = ..()
 	if(slot == ITEM_SLOT_HEAD)
-		RegisterSignal(user, COMSIG_MOB_SAY, .proc/handle_speech)
+		RegisterSignal(user, COMSIG_MOB_SAY, PROC_REF(handle_speech))
 	else
 		UnregisterSignal(user, COMSIG_MOB_SAY)
 
@@ -233,7 +237,7 @@
 /obj/item/clothing/head/hooded/onesie/lizard/equipped(mob/user, slot)
 	. = ..()
 	if(slot == ITEM_SLOT_HEAD)
-		RegisterSignal(user, COMSIG_MOB_SAY, .proc/handle_speech)
+		RegisterSignal(user, COMSIG_MOB_SAY, PROC_REF(handle_speech))
 	else
 		UnregisterSignal(user, COMSIG_MOB_SAY)
 

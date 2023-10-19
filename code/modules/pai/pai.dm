@@ -4,11 +4,11 @@
 	density = FALSE
 	desc = "A generic pAI hard-light holographics emitter."
 	health = 500
-	held_lh = 'icons/mob/pai_item_lh.dmi'
-	held_rh = 'icons/mob/pai_item_rh.dmi'
-	head_icon = 'icons/mob/pai_item_head.dmi'
+	held_lh = 'icons/mob/inhands/pai_item_lh.dmi'
+	held_rh = 'icons/mob/inhands/pai_item_rh.dmi'
+	head_icon = 'icons/mob/clothing/head/pai_head.dmi'
 	hud_type = /datum/hud/pai
-	icon = 'icons/mob/pai.dmi'
+	icon = 'icons/mob/silicon/pai.dmi'
 	icon_state = "repairbot"
 	job = JOB_PERSONAL_AI
 	layer = LOW_MOB_LAYER
@@ -65,6 +65,8 @@
 	var/ram = 100
 	/// Toggles whether the Security HUD is active or not
 	var/secHUD = FALSE
+	/// The current leash to the owner
+	var/datum/component/leash/leash
 
 	// Onboard Items
 	/// Atmospheric analyzer
@@ -108,6 +110,7 @@
 		"bat" = FALSE,
 		"butterfly" = FALSE,
 		"cat" = TRUE,
+		"chicken" = FALSE,
 		"corgi" = FALSE,
 		"crow" = TRUE,
 		"duffel" = TRUE,
@@ -145,9 +148,10 @@
 	return ..()
 
 // See software.dm for Topic()
-/mob/living/silicon/pai/canUseTopic(atom/movable/movable, be_close = FALSE, no_dexterity = FALSE, no_tk = FALSE, need_hands = FALSE, floor_okay = FALSE)
-	// Resting is just an aesthetic feature for them.
-	return ..(movable, be_close, no_dexterity, no_tk, need_hands, TRUE)
+/mob/living/silicon/pai/can_perform_action(atom/movable/target, action_bitflags)
+	action_bitflags |= ALLOW_RESTING // Resting is just an aesthetic feature for them
+	action_bitflags &= ~ALLOW_SILICON_REACH // They don't get long reach like the rest of silicons
+	return ..(target, action_bitflags)
 
 /mob/living/silicon/pai/Destroy()
 	QDEL_NULL(atmos_analyzer)
@@ -158,17 +162,24 @@
 	QDEL_NULL(internal_gps)
 	QDEL_NULL(newscaster)
 	QDEL_NULL(signaler)
-	if(!QDELETED(card) && loc != card)
-		card.forceMove(drop_location())
-		// these are otherwise handled by paicard/handle_atom_del()
-		card.pai = null
-		card.emotion_icon = initial(card.emotion_icon)
-		card.update_appearance()
+	QDEL_NULL(leash)
+	card = null
 	GLOB.pai_list.Remove(src)
 	return ..()
 
+// Need to override parent here because the message we dispatch is turf-based, not based on the location of the object because that could be fuckin anywhere
+/mob/living/silicon/pai/send_applicable_messages()
+	var/turf/location = get_turf(src)
+	location.visible_message(span_danger(get_visible_suicide_message()), null, span_hear(get_blind_suicide_message())) // null in the second arg here because we're sending from the turf
+
+/mob/living/silicon/pai/get_visible_suicide_message()
+	return "[src] flashes a message across its screen, \"Wiping core files. Please acquire a new personality to continue using pAI device functions.\""
+
+/mob/living/silicon/pai/get_blind_suicide_message()
+	return "[src] bleeps electronically."
+
 /mob/living/silicon/pai/emag_act(mob/user)
-	handle_emag(user)
+	return handle_emag(user)
 
 /mob/living/silicon/pai/examine(mob/user)
 	. = ..()
@@ -177,9 +188,9 @@
 /mob/living/silicon/pai/get_status_tab_items()
 	. += ..()
 	if(!stat)
-		. += text("Emitter Integrity: [holochassis_health * (100 / HOLOCHASSIS_MAX_HEALTH)].")
+		. += "Emitter Integrity: [holochassis_health * (100 / HOLOCHASSIS_MAX_HEALTH)]."
 	else
-		. += text("Systems nonfunctional.")
+		. += "Systems nonfunctional."
 
 /mob/living/silicon/pai/handle_atom_del(atom/deleting_atom)
 	if(deleting_atom == hacking_cable)
@@ -217,20 +228,22 @@
 		var/newcardloc = pai_card
 		pai_card = new(newcardloc)
 		pai_card.set_personality(src)
-	forceMove(pai_card)
 	card = pai_card
-	addtimer(VARSET_CALLBACK(src, holochassis_ready, TRUE), HOLOCHASSIS_INIT_TIME)
+	forceMove(pai_card)
+	leash = AddComponent(/datum/component/leash, pai_card, HOLOFORM_DEFAULT_RANGE, force_teleport_out_effect = /obj/effect/temp_visual/guardian/phase/out)
+	addtimer(VARSET_WEAK_CALLBACK(src, holochassis_ready, TRUE), HOLOCHASSIS_INIT_TIME)
 	if(!holoform)
-		ADD_TRAIT(src, TRAIT_IMMOBILIZED, PAI_FOLDED)
-		ADD_TRAIT(src, TRAIT_HANDS_BLOCKED, PAI_FOLDED)
-	desc = "A pAI hard-light holographics emitter. This one appears in the form of a [chassis]."
+		add_traits(list(TRAIT_IMMOBILIZED, TRAIT_HANDS_BLOCKED), PAI_FOLDED)
+	update_appearance(UPDATE_DESC)
+
+	RegisterSignal(src, COMSIG_LIVING_CULT_SACRIFICED, PROC_REF(on_cult_sacrificed))
 
 /mob/living/silicon/pai/make_laws()
 	laws = new /datum/ai_laws/pai()
 	return TRUE
 
-/mob/living/silicon/pai/process(delta_time)
-	holochassis_health = clamp((holochassis_health + (HOLOCHASSIS_REGEN_PER_SECOND * delta_time)), -50, HOLOCHASSIS_MAX_HEALTH)
+/mob/living/silicon/pai/process(seconds_per_tick)
+	holochassis_health = clamp((holochassis_health + (HOLOCHASSIS_REGEN_PER_SECOND * seconds_per_tick)), -50, HOLOCHASSIS_MAX_HEALTH)
 
 /mob/living/silicon/pai/Process_Spacemove(movement_dir = 0, continuous_move = FALSE)
 	. = ..()
@@ -248,6 +261,16 @@
 		return
 	set_health(maxHealth - getBruteLoss() - getFireLoss())
 	update_stat()
+	SEND_SIGNAL(src, COMSIG_LIVING_HEALTH_UPDATE)
+
+/mob/living/silicon/pai/update_desc(updates)
+	desc = "A hard-light holographic avatar representing a pAI. This one appears in the form of a [chassis]."
+	return ..()
+
+/mob/living/silicon/pai/update_icon_state()
+	icon_state = resting ? "[chassis]_rest" : "[chassis]"
+	held_state = "[chassis]"
+	return ..()
 
 /**
  * Resolves the weakref of the pai's master.
@@ -312,7 +335,10 @@
 	master_name = "The Syndicate"
 	master_dna = "Untraceable Signature"
 	// Sets supplemental directive to this
-	laws.supplied[1] = "Do not interfere with the operations of the Syndicate."
+	add_supplied_law(0, "Do not interfere with the operations of the Syndicate.")
+	QDEL_NULL(leash) // Freedom!!!
+	to_chat(src, span_danger("ALERT: Foreign software detected."))
+	to_chat(src, span_danger("WARN: Holochasis range restrictions disabled."))
 	return TRUE
 
 /**
@@ -328,6 +354,7 @@
 	master_name = null
 	master_dna = null
 	add_supplied_law(0, "None.")
+	leash = AddComponent(/datum/component/leash, card, HOLOFORM_DEFAULT_RANGE, force_teleport_out_effect = /obj/effect/temp_visual/guardian/phase/out)
 	balloon_alert(src, "software rebooted")
 	return TRUE
 
@@ -416,3 +443,21 @@
 	playsound(src, "sound/machines/buzz-two.ogg", 30, TRUE)
 	qdel(src)
 	return TRUE
+
+/// Signal proc for [COMSIG_LIVING_CULT_SACRIFICED] to give a funny message when a pai is attempted to be sac'd
+/mob/living/silicon/pai/proc/on_cult_sacrificed(datum/source, list/invokers)
+	SIGNAL_HANDLER
+
+	for(var/mob/living/cultist as anything in invokers)
+		to_chat(cultist, span_cultitalic("You don't think this is what Nar'Sie had in mind when She asked for blood sacrifices..."))
+	return STOP_SACRIFICE
+
+/// Updates the distance we can be from our pai card
+/mob/living/silicon/pai/proc/increment_range(increment_amount)
+	if(emagged)
+		return
+
+	var/new_distance = leash.distance + increment_amount
+	if (new_distance < HOLOFORM_MIN_RANGE || new_distance > HOLOFORM_MAX_RANGE)
+		return
+	leash.set_distance(new_distance)

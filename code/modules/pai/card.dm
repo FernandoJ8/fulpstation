@@ -4,10 +4,10 @@
 	icon = 'icons/obj/aicards.dmi'
 	icon_state = "pai"
 	inhand_icon_state = "electronic"
-	lefthand_file = 'icons/mob/inhands/misc/devices_lefthand.dmi'
+	lefthand_file = 'icons/mob/inhands/items/devices_lefthand.dmi'
 	name = "personal AI device"
 	resistance_flags = FIRE_PROOF | ACID_PROOF | INDESTRUCTIBLE
-	righthand_file = 'icons/mob/inhands/misc/devices_righthand.dmi'
+	righthand_file = 'icons/mob/inhands/items/devices_righthand.dmi'
 	slot_flags = ITEM_SLOT_BELT
 	w_class = WEIGHT_CLASS_SMALL
 	worn_icon_state = "electronic"
@@ -47,13 +47,14 @@
 
 /obj/item/pai_card/emag_act(mob/user)
 	if(pai)
-		pai.handle_emag(user)
+		return pai.handle_emag(user)
+	return FALSE
 
 /obj/item/pai_card/emp_act(severity)
 	. = ..()
 	if (. & EMP_PROTECT_SELF)
 		return
-	if(!pai?.holoform)
+	if(pai && !pai.holoform)
 		pai.emp_act(severity)
 
 /obj/item/pai_card/handle_atom_del(atom/thing)
@@ -65,11 +66,12 @@
 
 /obj/item/pai_card/Initialize(mapload)
 	. = ..()
+
 	update_appearance()
 	SSpai.pai_card_list += src
 
 /obj/item/pai_card/suicide_act(mob/living/user)
-	user.visible_message(span_suicide("[user] is staring sadly at [src]! [user.p_they()] can't keep living without real human intimacy!"))
+	user.visible_message(span_suicide("[user] is staring sadly at [src]! [user.p_They()] can't keep living without real human intimacy!"))
 	return OXYLOSS
 
 /obj/item/pai_card/update_overlays()
@@ -95,6 +97,11 @@
 		return UI_INTERACTIVE
 	return ..()
 
+/obj/item/pai_card/ui_static_data(mob/user)
+	. = ..()
+	.["range_max"] = HOLOFORM_MAX_RANGE
+	.["range_min"] = HOLOFORM_MIN_RANGE
+
 /obj/item/pai_card/ui_data(mob/user)
 	. = ..()
 	var/list/data = list()
@@ -110,6 +117,7 @@
 		name = pai.name,
 		transmit = pai.can_transmit,
 		receive = pai.can_receive,
+		range = pai.leash?.distance,
 	)
 	return data
 
@@ -146,6 +154,12 @@
 		if("toggle_radio")
 			pai.toggle_radio(params["option"])
 			return TRUE
+		if("increase_range")
+			pai.increment_range(1)
+			return TRUE
+		if("decrease_range")
+			pai.increment_range(-1)
+			return TRUE
 		if("wipe_pai")
 			pai.wipe_pai(usr)
 			ui.close()
@@ -158,7 +172,7 @@
 		return
 	add_overlay(
 		list(mutable_appearance(icon, "[initial(icon_state)]-alert"),
-			emissive_appearance(icon, "[initial(icon_state)]-alert", alpha = src.alpha)))
+			emissive_appearance(icon, "[initial(icon_state)]-alert", src, alpha = src.alpha)))
 
 /** Removes any overlays */
 /obj/item/pai_card/proc/remove_alert()
@@ -172,7 +186,7 @@
 		return
 	COOLDOWN_START(src, alert_cooldown, 5 SECONDS)
 	add_alert()
-	addtimer(CALLBACK(src, .proc/remove_alert), 5 SECONDS)
+	addtimer(CALLBACK(src, PROC_REF(remove_alert)), 5 SECONDS)
 	playsound(src, 'sound/machines/ping.ogg', 30, TRUE)
 	visible_message(span_notice("[src] flashes a message across its screen: New personalities available for download!"), blind_message = span_notice("[src] vibrates with an alert."))
 

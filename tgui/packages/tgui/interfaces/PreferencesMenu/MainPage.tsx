@@ -2,7 +2,7 @@ import { classes } from 'common/react';
 import { sendAct, useBackend, useLocalState } from '../../backend';
 import { Autofocus, Box, Button, Flex, LabeledList, Popper, Stack, TrackOutsideClicks } from '../../components';
 import { createSetPreference, PreferencesMenuData, RandomSetting } from './data';
-import { CharacterPreview } from './CharacterPreview';
+import { CharacterPreview } from '../common/CharacterPreview';
 import { RandomizationButton } from './RandomizationButton';
 import { ServerPreferencesFetcher } from './ServerPreferencesFetcher';
 import { MultiNameInput, NameInput } from './names';
@@ -188,23 +188,25 @@ const GenderButton = (
       popperContent={
         genderMenuOpen && (
           <Stack backgroundColor="white" ml={0.5} p={0.3}>
-            {[Gender.Male, Gender.Female, Gender.Other].map((gender) => {
-              return (
-                <Stack.Item key={gender}>
-                  <Button
-                    selected={gender === props.gender}
-                    onClick={() => {
-                      props.handleSetGender(gender);
-                      setGenderMenuOpen(false);
-                    }}
-                    fontSize="22px"
-                    icon={GENDERS[gender].icon}
-                    tooltip={GENDERS[gender].text}
-                    tooltipPosition="top"
-                  />
-                </Stack.Item>
-              );
-            })}
+            {[Gender.Male, Gender.Female, Gender.Other, Gender.Other2].map(
+              (gender) => {
+                return (
+                  <Stack.Item key={gender}>
+                    <Button
+                      selected={gender === props.gender}
+                      onClick={() => {
+                        props.handleSetGender(gender);
+                        setGenderMenuOpen(false);
+                      }}
+                      fontSize="22px"
+                      icon={GENDERS[gender].icon}
+                      tooltip={GENDERS[gender].text}
+                      tooltipPosition="top"
+                    />
+                  </Stack.Item>
+                );
+              }
+            )}
           </Stack>
         )
       }>

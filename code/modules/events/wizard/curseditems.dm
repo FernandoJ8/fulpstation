@@ -34,7 +34,7 @@
 		if("voicemodulators")
 			loadout[ITEM_SLOT_MASK] = /obj/item/clothing/mask/chameleon
 		if("catgirls2015")
-			loadout[ITEM_SLOT_HEAD] = /obj/item/clothing/head/kitty
+			loadout[ITEM_SLOT_HEAD] = /obj/item/clothing/head/costume/kitty
 			ruins_spaceworthiness = 1
 			ruins_wizard_loadout = 1
 
@@ -50,7 +50,7 @@
 				var/obj/item/J = loadout[i]
 				var/obj/item/I = new J //dumb but required because of byond throwing a fit anytime new gets too close to a list
 				H.dropItemToGround(H.get_item_by_slot(i), TRUE)
-				H.equip_to_slot_or_del(I, i)
+				H.equip_to_slot_or_del(I, i, indirect_action = TRUE)
 				ADD_TRAIT(I, TRAIT_NODROP, CURSED_ITEM_TRAIT(I))
 				I.item_flags |= DROPDEL
 				I.name = "cursed " + I.name

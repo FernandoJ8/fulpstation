@@ -14,7 +14,7 @@
 	beefman_base.Blend(icon('fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi', "beefman_l_arm"), ICON_OVERLAY)
 	beefman_base.Blend(icon('fulp_modules/features/species/icons/mob/beefman_bodyparts.dmi', "beefman_r_arm"), ICON_OVERLAY)
 
-	var/icon/eyes = icon('icons/mob/human_face.dmi', "eyes")
+	var/icon/eyes = icon('icons/mob/human/human_face.dmi', "eyes")
 	eyes.Blend(COLOR_BLACK, ICON_MULTIPLY)
 	beefman_base.Blend(eyes, ICON_OVERLAY)
 
@@ -108,3 +108,4 @@
 
 /datum/preference/choiced/beefman_trauma/create_default_value()
 	return "Phobia of Strangers"
+

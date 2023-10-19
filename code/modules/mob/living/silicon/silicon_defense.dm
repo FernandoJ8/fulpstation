@@ -5,7 +5,7 @@
 /mob/living/silicon/get_ear_protection()//no ears
 	return 2
 
-/mob/living/silicon/attack_alien(mob/living/carbon/alien/humanoid/user, list/modifiers)
+/mob/living/silicon/attack_alien(mob/living/carbon/alien/adult/user, list/modifiers)
 	if(..()) //if harm or disarm intent
 		var/damage = rand(user.melee_damage_lower, user.melee_damage_upper)
 		if (prob(90))
@@ -100,7 +100,7 @@
 /mob/living/silicon/emp_act(severity)
 	. = ..()
 	to_chat(src, span_danger("Warning: Electromagnetic pulse detected."))
-	if(. & EMP_PROTECT_SELF)
+	if(. & EMP_PROTECT_SELF || QDELETED(src))
 		return
 	switch(severity)
 		if(1)

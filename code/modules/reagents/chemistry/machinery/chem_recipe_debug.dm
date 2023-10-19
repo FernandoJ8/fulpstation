@@ -5,7 +5,7 @@
 /obj/machinery/chem_recipe_debug
 	name = "chemical reaction tester"
 	density = TRUE
-	icon = 'icons/obj/chemical.dmi'
+	icon = 'icons/obj/medical/chemical.dmi'
 	icon_state = "HPLC_debug"
 	idle_power_usage = BASE_MACHINE_IDLE_CONSUMPTION * 0.4
 	resistance_flags = FIRE_PROOF | ACID_PROOF | INDESTRUCTIBLE
@@ -90,7 +90,7 @@
 * The main loop that sets up, creates and displays results from a reaction
 * warning: this code is a hot mess
 */
-/obj/machinery/chem_recipe_debug/process(delta_time)
+/obj/machinery/chem_recipe_debug/process(seconds_per_tick)
 	if(processing == FALSE)
 		setup_reactions()
 	if(should_force_ph)
@@ -98,7 +98,7 @@
 	if(should_force_temp)
 		reagents.chem_temp = force_temp
 	if(reagents.is_reacting == TRUE)
-		react_time += delta_time
+		react_time += seconds_per_tick
 		return
 	if(reaction_stated == TRUE)
 		reaction_stated = FALSE

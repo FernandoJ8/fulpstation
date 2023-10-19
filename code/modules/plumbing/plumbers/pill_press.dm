@@ -4,12 +4,15 @@
 	desc = "A press that makes pills, patches and bottles."
 	icon_state = "pill_press"
 	active_power_usage = BASE_MACHINE_ACTIVE_CONSUMPTION * 2
+	///category for plumbing RCD
+	category="Storage"
+
 	///maximum size of a pill
 	var/max_pill_volume = 50
 	///maximum size of a patch
 	var/max_patch_volume = 40
 	///maximum size of a bottle
-	var/max_bottle_volume = 30
+	var/max_bottle_volume = 50
 	///current operating product (pills or patches)
 	var/product = "pill"
 	///the minimum size a pill or patch can be
@@ -42,24 +45,7 @@
 
 	AddComponent(/datum/component/plumbing/simple_demand, bolt, layer)
 
-	//expertly copypasted from chemmasters
-	var/datum/asset/spritesheet/simple/assets = get_asset_datum(/datum/asset/spritesheet/simple/pills)
-	pill_styles = list()
-	for (var/x in 1 to PILL_STYLE_COUNT)
-		var/list/SL = list()
-		SL["id"] = x
-		SL["class_name"] = assets.icon_class_name("pill[x]")
-		pill_styles += list(SL)
-	var/datum/asset/spritesheet/simple/patches_assets = get_asset_datum(/datum/asset/spritesheet/simple/patches)
-	patch_styles = list()
-	for (var/raw_patch_style in PATCH_STYLE_LIST)
-		//adding class_name for use in UI
-		var/list/patch_style = list()
-		patch_style["style"] = raw_patch_style
-		patch_style["class_name"] = patches_assets.icon_class_name(raw_patch_style)
-		patch_styles += list(patch_style)
-
-/obj/machinery/plumbing/pill_press/process(delta_time)
+/obj/machinery/plumbing/pill_press/process(seconds_per_tick)
 	if(machine_stat & NOPOWER)
 		return
 	if(reagents.total_volume >= current_volume)
@@ -98,7 +84,25 @@
 			stored_products -= AM
 			AM.forceMove(drop_location())
 
-	use_power(active_power_usage * delta_time)
+	use_power(active_power_usage * seconds_per_tick)
+
+/obj/machinery/plumbing/pill_press/proc/load_styles()
+	//expertly copypasted from chemmasters
+	var/datum/asset/spritesheet/simple/assets = get_asset_datum(/datum/asset/spritesheet/simple/pills)
+	pill_styles = list()
+	for (var/x in 1 to PILL_STYLE_COUNT)
+		var/list/SL = list()
+		SL["id"] = x
+		SL["class_name"] = assets.icon_class_name("pill[x]")
+		pill_styles += list(SL)
+	var/datum/asset/spritesheet/simple/patches_assets = get_asset_datum(/datum/asset/spritesheet/simple/patches)
+	patch_styles = list()
+	for (var/raw_patch_style in PATCH_STYLE_LIST)
+		//adding class_name for use in UI
+		var/list/patch_style = list()
+		patch_style["style"] = raw_patch_style
+		patch_style["class_name"] = patches_assets.icon_class_name(raw_patch_style)
+		patch_styles += list(patch_style)
 
 /obj/machinery/plumbing/pill_press/ui_assets(mob/user)
 	return list(
@@ -113,6 +117,8 @@
 		ui.open()
 
 /obj/machinery/plumbing/pill_press/ui_data(mob/user)
+	if(!pill_styles || !patch_styles)
+		load_styles()
 	var/list/data = list()
 	data["pill_style"] = pill_number
 	data["current_volume"] = current_volume

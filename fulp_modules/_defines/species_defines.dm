@@ -4,6 +4,12 @@
 #define SPECIES_BEEFMAN "beefman"
 
 /**
+* Beefman damage description defines
+*/
+#define BEEF_BRUTE_EXAMINE_TEXT "tenderizing"
+#define BEEF_BURN_EXAMINE_TEXT "searing"
+
+/**
  * Beefman color pref defines
  */
 #define BEEF_COLOR_VERY_RARE "Very Rare"
@@ -30,7 +36,6 @@
 #define BEEF_MOUTH_GRITTING_SMILE "Gritting Smile"
 #define BEEF_MOUTH_SMILE "Smile"
 #define BEEF_MOUTH_SMIRK "Smirk"
-
 /**
  * Beefman trauma pref defines
  */
@@ -38,3 +43,4 @@
 #define BEEF_TRAUMA_CONSPIRACIES "Phobia of Conspiracies"
 #define BEEF_TRAUMA_HALLUCINATIONS "Severe Hallucinations"
 #define BEEF_TRAUMA_MONOPHOBIA "Extreme Monophobia"
+

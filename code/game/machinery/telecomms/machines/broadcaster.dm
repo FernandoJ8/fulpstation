@@ -25,6 +25,9 @@ GLOBAL_VAR_INIT(message_delay, 0) // To make sure restarting the recentmessages 
 		return
 	if(!signal.data["message"])
 		return
+	var/signal_message = "[signal.frequency]:[signal.data["message"]]:[signal.data["name"]]"
+	if(signal_message in GLOB.recentmessages)
+		return
 
 	// Prevents massive radio spam
 	signal.mark_done()
@@ -34,11 +37,8 @@ GLOBAL_VAR_INIT(message_delay, 0) // To make sure restarting the recentmessages 
 
 	var/turf/T = get_turf(src)
 	if (T)
-		signal.levels |= T.z
+		signal.levels |= SSmapping.get_connected_levels(T)
 
-	var/signal_message = "[signal.frequency]:[signal.data["message"]]:[signal.data["name"]]"
-	if(signal_message in GLOB.recentmessages)
-		return
 	GLOB.recentmessages.Add(signal_message)
 
 	if(signal.data["slow"] > 0)
@@ -48,7 +48,7 @@ GLOBAL_VAR_INIT(message_delay, 0) // To make sure restarting the recentmessages 
 
 	if(!GLOB.message_delay)
 		GLOB.message_delay = TRUE
-		addtimer(CALLBACK(GLOBAL_PROC, .proc/end_message_delay), 1 SECONDS)
+		addtimer(CALLBACK(GLOBAL_PROC, GLOBAL_PROC_REF(end_message_delay)), 1 SECONDS)
 
 	/* --- Do a snazzy animation! --- */
 	flick("broadcaster_send", src)

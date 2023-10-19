@@ -50,7 +50,7 @@
 /obj/machinery/vending
 	name = "\improper Vendomat"
 	desc = "A generic vending machine."
-	icon = 'icons/obj/vending.dmi'
+	icon = 'icons/obj/machines/vending.dmi'
 	icon_state = "generic"
 	layer = BELOW_OBJ_LAYER
 	density = TRUE
@@ -59,11 +59,13 @@
 	verb_exclaim = "beeps"
 	max_integrity = 300
 	integrity_failure = 0.33
-	armor = list(MELEE = 20, BULLET = 0, LASER = 0, ENERGY = 0, BOMB = 0, BIO = 0, FIRE = 50, ACID = 70)
+	armor_type = /datum/armor/machinery_vending
 	circuit = /obj/item/circuitboard/machine/vendor
 	payment_department = ACCOUNT_SRV
-	light_power = 0.5
+	light_power = 0.7
 	light_range = MINIMUM_USEFUL_LIGHT_RANGE
+	voice_filter = "alimiter=0.9,acompressor=threshold=0.2:ratio=20:attack=10:release=50:makeup=2,highpass=f=1000"
+
 	/// Is the machine active (No sales pitches if off)!
 	var/active = 1
 	///Are we ready to vend?? Is it time??
@@ -73,9 +75,14 @@
 	///The ref of the last mob to shop with us
 	var/last_shopper
 	var/tilted = FALSE
+	/// If tilted, this variable should always be the rotation that was applied when we were tilted. Stored for the purposes of unapplying it.
+	var/tilted_rotation = 0
 	var/tiltable = TRUE
 	var/squish_damage = 75
-	var/forcecrit = 0
+	/// The chance, in percent, of this vendor performing a critical hit on anything it crushes via [tilt].
+	var/crit_chance = 15
+	/// If set to a critical define in crushing.dm, anything this vendor crushes will always be hit with that effect.
+	var/forcecrit = null
 	var/num_shards = 7
 	var/list/pinned_mobs = list()
 	///Icon for the maintenance panel overlay
@@ -140,15 +147,15 @@
 	///World ticks the machine is electified for
 	var/seconds_electrified = MACHINE_NOT_ELECTRIFIED
 	///When this is TRUE, we fire items at customers! We're broken!
-	var/shoot_inventory = 0
+	var/shoot_inventory = FALSE
 	///How likely this is to happen (prob 100) per second
 	var/shoot_inventory_chance = 1
 	//Stop spouting those godawful pitches!
-	var/shut_up = 0
+	var/shut_up = FALSE
 	///can we access the hidden inventory?
-	var/extended_inventory = 0
+	var/extended_inventory = FALSE
 	///Are we checking the users ID
-	var/scan_id = 1
+	var/scan_id = TRUE
 	///Coins that we accept?
 	var/obj/item/coin/coin
 	///Bills we accept?
@@ -163,14 +170,15 @@
 	  * Is this item on station or not
 	  *
 	  * if it doesn't originate from off-station during mapload, everything is free
+	  * if it's off-station during mapload, it's also safe from the brand intelligence event
 	  */
-	var/onstation = TRUE //if it doesn't originate from off-station during mapload, everything is free
-	///A variable to change on a per instance basis on the map that allows the instance to force cost and ID requirements
-	var/onstation_override = FALSE //change this on the object on the map to override the onstation check. DO NOT APPLY THIS GLOBALLY.
-
-	///ID's that can load this vending machine wtih refills
-	var/list/canload_access_list
-
+	var/onstation = TRUE
+	/**
+	 * A variable to change on a per instance basis on the map that allows the instance
+	 * to ignore whether it's on the station or not.
+	 * Useful to force cost and ID requirements. DO NOT APPLY THIS GLOBALLY.
+	 */
+	var/onstation_override = FALSE
 
 	var/list/vending_machine_input = list()
 	///Display header on the input view
@@ -186,8 +194,7 @@
 	var/light_mask
 
 	/// used for narcing on underages
-	var/obj/item/radio/Radio
-
+	var/obj/item/radio/sec_radio
 
 /**
  * Initialize the vending machine
@@ -198,13 +205,24 @@
  * * FALSE - if the machine was maploaded on a zlevel that doesn't pass the is_station_level check
  * * TRUE - all other cases
  */
+/datum/armor/machinery_vending
+	melee = 20
+	fire = 50
+	acid = 70
+
 /obj/machinery/vending/Initialize(mapload)
 	var/build_inv = FALSE
 	if(!refill_canister)
 		circuit = null
 		build_inv = TRUE
 	. = ..()
-	wires = new /datum/wires/vending(src)
+	set_wires(new /datum/wires/vending(src))
+
+	if(SStts.tts_enabled)
+		var/static/vendor_voice_by_type = list()
+		if(!vendor_voice_by_type[type])
+			vendor_voice_by_type[type] = pick(SStts.available_speakers)
+		voice = vendor_voice_by_type[type]
 
 	if(build_inv) //non-constructable vending machine
 		build_inventories()
@@ -216,28 +234,41 @@
 	last_slogan = world.time + rand(0, slogan_delay)
 	power_change()
 
-	if(onstation_override) //overrides the checks if true.
-		onstation = TRUE
-		return
 	if(mapload) //check if it was initially created off station during mapload.
 		if(!is_station_level(z))
-			onstation = FALSE
+			if(!onstation_override)
+				onstation = FALSE
 			if(circuit)
 				circuit.onstation = onstation //sync up the circuit so the pricing schema is carried over if it's reconstructed.
+		else if(HAS_TRAIT(SSstation, STATION_TRAIT_VENDING_SHORTAGE))
+			for (var/datum/data/vending_product/product_record as anything in product_records + coin_records + hidden_records)
+				/**
+				 * in average, it should be 37.5% of the max amount, rounded up to the nearest int,
+				 * tho the max boundary can be as low/high as 50%/100%
+				 */
+				var/max_amount = rand(CEILING(product_record.amount * 0.5, 1), product_record.amount)
+				product_record.amount = rand(0, max_amount)
+			if(tiltable && prob(6)) // 1 in 17 chance to start tilted (as an additional hint to the station trait behind it)
+				INVOKE_ASYNC(src, PROC_REF(tilt), loc)
 	else if(circuit && (circuit.onstation != onstation)) //check if they're not the same to minimize the amount of edited values.
 		onstation = circuit.onstation //if it was constructed outside mapload, sync the vendor up with the circuit's var so you can't bypass price requirements by moving / reconstructing it off station.
-	Radio = new /obj/item/radio(src)
-	Radio.set_listening(FALSE)
 
 /obj/machinery/vending/Destroy()
 	QDEL_NULL(wires)
 	QDEL_NULL(coin)
 	QDEL_NULL(bill)
-	QDEL_NULL(Radio)
+	QDEL_NULL(sec_radio)
 	return ..()
 
 /obj/machinery/vending/can_speak()
 	return !shut_up
+
+/obj/machinery/vending/emp_act(severity)
+	. = ..()
+	var/datum/language_holder/vending_languages = get_language_holder()
+	var/datum/wires/vending/vending_wires = wires
+	// if the language wire got pulsed during an EMP, this will make sure the language_iterator is synched correctly
+	vending_languages.selected_language = vending_languages.spoken_languages[vending_wires.language_iterator]
 
 //Better would be to make constructable child
 /obj/machinery/vending/RefreshParts()
@@ -285,7 +316,7 @@
 	if(panel_open)
 		. += panel_type
 	if(light_mask && !(machine_stat & BROKEN) && powered())
-		. += emissive_appearance(icon, light_mask)
+		. += emissive_appearance(icon, light_mask, src)
 
 /obj/machinery/vending/atom_break(damage_flag)
 	. = ..()
@@ -323,7 +354,6 @@
 			if (dump_amount >= 16)
 				return
 
-GLOBAL_LIST_EMPTY(vending_products)
 /**
  * Build the inventory of the vending machine from it's product and record lists
  *
@@ -335,8 +365,11 @@ GLOBAL_LIST_EMPTY(vending_products)
  * * startempty - should we set vending_product record amount from the product list (so it's prefilled at roundstart)
  */
 /obj/machinery/vending/proc/build_inventory(list/productlist, list/recordlist, list/categories, start_empty = FALSE)
-	default_price = round(initial(default_price) * SSeconomy.inflation_value())
-	extra_price = round(initial(extra_price) * SSeconomy.inflation_value())
+	default_price = round(initial(default_price))
+	extra_price = round(initial(extra_price))
+	if(HAS_TRAIT(SSeconomy, TRAIT_MARKET_CRASHING))
+		default_price *= SSeconomy.inflation_value()
+		extra_price *= SSeconomy.inflation_value()
 
 	var/list/product_to_category = list()
 	for (var/list/category as anything in categories)
@@ -351,15 +384,17 @@ GLOBAL_LIST_EMPTY(vending_products)
 
 		var/obj/item/temp = typepath
 		var/datum/data/vending_product/R = new /datum/data/vending_product()
-		GLOB.vending_products[typepath] = 1
 		R.name = initial(temp.name)
 		R.product_path = typepath
 		if(!start_empty)
 			R.amount = amount
 		R.max_amount = amount
 		///Prices of vending machines are all increased uniformly.
-		R.custom_price = round(initial(temp.custom_price) * SSeconomy.inflation_value())
-		R.custom_premium_price = round(initial(temp.custom_premium_price) * SSeconomy.inflation_value())
+		R.custom_price = round(initial(temp.custom_price))
+		R.custom_premium_price = round(initial(temp.custom_premium_price))
+		if(HAS_TRAIT(SSeconomy, TRAIT_MARKET_CRASHING))
+			R.custom_price = round(initial(temp.custom_price) * SSeconomy.inflation_value())
+			R.custom_premium_price = round(initial(temp.custom_premium_price) * SSeconomy.inflation_value())
 		R.age_restricted = initial(temp.age_restricted)
 		R.colorable = !!(initial(temp.greyscale_config) && initial(temp.greyscale_colors) && (initial(temp.flags_1) & IS_PLAYER_COLORABLE_1))
 		R.category = product_to_category[typepath]
@@ -397,21 +432,32 @@ GLOBAL_LIST_EMPTY(vending_products)
  * * premiumlist - the list of premium product datums in the vendor to refresh their prices.
  */
 /obj/machinery/vending/proc/reset_prices(list/recordlist, list/premiumlist)
-	default_price = round(initial(default_price) * SSeconomy.inflation_value())
-	extra_price = round(initial(extra_price) * SSeconomy.inflation_value())
+	var/crash_status = HAS_TRAIT(SSeconomy, TRAIT_MARKET_CRASHING)
+	default_price = round(initial(default_price))
+	extra_price = round(initial(extra_price))
+	if(crash_status)
+		default_price *= SSeconomy.inflation_value()
+		extra_price *= SSeconomy.inflation_value()
+
 	for(var/R in recordlist)
 		var/datum/data/vending_product/record = R
 		var/obj/item/potential_product = record.product_path
-		record.custom_price = round(initial(potential_product.custom_price) * SSeconomy.inflation_value())
+		record.custom_price = round(initial(potential_product.custom_price))
+		if(crash_status)
+			record.custom_price = round(initial(potential_product.custom_price) * SSeconomy.inflation_value())
 	for(var/R in premiumlist)
 		var/datum/data/vending_product/record = R
 		var/obj/item/potential_product = record.product_path
 		var/premium_sanity = round(initial(potential_product.custom_premium_price))
 		if(premium_sanity)
-			record.custom_premium_price = round(premium_sanity * SSeconomy.inflation_value())
+			record.custom_premium_price = round(premium_sanity)
+			if(crash_status)
+				record.custom_premium_price = round(premium_sanity * SSeconomy.inflation_value())
 			continue
 		//For some ungodly reason, some premium only items only have a custom_price
-		record.custom_premium_price = round(extra_price + (initial(potential_product.custom_price) * (SSeconomy.inflation_value() - 1)))
+		record.custom_premium_price = round(extra_price + (initial(potential_product.custom_price)))
+		if(crash_status)
+			record.custom_premium_price = round(extra_price + (initial(potential_product.custom_price) * (SSeconomy.inflation_value() - 1)))
 
 /**
  * Refill a vending machine from a refill canister
@@ -610,6 +656,11 @@ GLOBAL_LIST_EMPTY(vending_products)
 	else
 		. = ..()
 		if(tiltable && !tilted && I.force)
+			if(isclosedturf(get_turf(user))) //If the attacker is inside of a wall, immediately fall in the other direction, with no chance for goodies.
+				var/opposite_direction = REVERSE_DIR(get_dir(src, user))
+				var/target = get_step(src, opposite_direction)
+				tilt(get_turf(target))
+				return
 			switch(rand(1, 100))
 				if(1 to 5)
 					freebie(user, 3)
@@ -619,10 +670,8 @@ GLOBAL_LIST_EMPTY(vending_products)
 					freebie(user, 1)
 				if(26 to 75)
 					return
-				if(76 to 90)
+				if(76 to 100)
 					tilt(user)
-				if(91 to 100)
-					tilt(user, crit=TRUE)
 
 /obj/machinery/vending/proc/freebie(mob/fatty, freebies)
 	visible_message(span_notice("[src] yields [freebies > 1 ? "several free goodies" : "a free goody"]!"))
@@ -645,118 +694,279 @@ GLOBAL_LIST_EMPTY(vending_products)
 			R.amount--
 			break
 
-///Tilts ontop of the atom supplied, if crit is true some extra shit can happen. Returns TRUE if it dealt damage to something.
-/obj/machinery/vending/proc/tilt(atom/fatty, crit=FALSE)
+/// Tilts ontop of the atom supplied, if crit is true some extra shit can happen. See [fall_and_crush] for return values.
+/obj/machinery/vending/proc/tilt(atom/fatty, local_crit_chance = crit_chance, forced_crit = forcecrit)
 	if(QDELETED(src) || !has_gravity(src))
 		return
-	visible_message(span_danger("[src] tips over!"))
-	tilted = TRUE
-	layer = ABOVE_MOB_LAYER
-	plane = GAME_PLANE_UPPER
 
-	var/crit_case
-	if(crit)
-		crit_case = rand(1,6)
+	. = NONE
 
-	if(forcecrit)
-		crit_case = forcecrit
+	var/picked_rotation = pick(90, 270)
+	if(Adjacent(fatty))
+		. = fall_and_crush(get_turf(fatty), squish_damage, local_crit_chance, forced_crit, 6 SECONDS, rotation = picked_rotation)
 
-	. = FALSE
-
-	if(in_range(fatty, src))
-		for(var/mob/living/L in get_turf(fatty))
-			var/was_alive = (L.stat != DEAD)
-			var/mob/living/carbon/C = L
-
-			SEND_SIGNAL(L, COMSIG_ON_VENDOR_CRUSH)
-
-
-			if(istype(C))
-				var/crit_rebate = 0 // lessen the normal damage we deal for some of the crits
-
-				if(crit_case < 5) // the body/head asplode case has its own description
-					C.visible_message(span_danger("[C] is crushed by [src]!"), \
-						span_userdanger("You are crushed by [src]!"))
-
-				switch(crit_case) // only carbons can have the fun crits
-					if(1) // shatter their legs and bleed 'em
-						crit_rebate = 60
-						C.bleed(150)
-						var/obj/item/bodypart/l_leg/l = C.get_bodypart(BODY_ZONE_L_LEG)
-						if(l)
-							l.receive_damage(brute=200)
-						var/obj/item/bodypart/r_leg/r = C.get_bodypart(BODY_ZONE_R_LEG)
-						if(r)
-							r.receive_damage(brute=200)
-						if(l || r)
-							C.visible_message(span_danger("[C]'s legs shatter with a sickening crunch!"), \
-								span_userdanger("Your legs shatter with a sickening crunch!"))
-					if(2) // pin them beneath the machine until someone untilts it
-						forceMove(get_turf(C))
-						buckle_mob(C, force=TRUE)
-						C.visible_message(span_danger("[C] is pinned underneath [src]!"), \
-							span_userdanger("You are pinned down by [src]!"))
-					if(3) // glass candy
-						crit_rebate = 50
-						for(var/i in 1 to num_shards)
-							var/obj/item/shard/shard = new /obj/item/shard(get_turf(C))
-							shard.embedding = list(embed_chance = 100, ignore_throwspeed_threshold = TRUE, impact_pain_mult=1, pain_chance=5)
-							shard.updateEmbedding()
-							C.hitby(shard, skipcatch = TRUE, hitpush = FALSE)
-							shard.embedding = list()
-							shard.updateEmbedding()
-					if(4) // paralyze this binch
-						// the new paraplegic gets like 4 lines of losing their legs so skip them
-						visible_message(span_danger("[C]'s spinal cord is obliterated with a sickening crunch!"), ignored_mobs = list(C))
-						C.gain_trauma(/datum/brain_trauma/severe/paralysis/paraplegic)
-					if(5) // limb squish!
-						for(var/i in C.bodyparts)
-							var/obj/item/bodypart/squish_part = i
-							if(IS_ORGANIC_LIMB(squish_part))
-								var/type_wound = pick(list(/datum/wound/blunt/critical, /datum/wound/blunt/severe, /datum/wound/blunt/moderate))
-								squish_part.force_wound_upwards(type_wound)
-							else
-								squish_part.receive_damage(brute=30)
-						C.visible_message(span_danger("[C]'s body is maimed underneath the mass of [src]!"), \
-							span_userdanger("Your body is maimed underneath the mass of [src]!"))
-					if(6) // skull squish!
-						var/obj/item/bodypart/head/O = C.get_bodypart(BODY_ZONE_HEAD)
-						if(O)
-							if(O.dismember())
-								C.visible_message(span_danger("[O] explodes in a shower of gore beneath [src]!"), \
-									span_userdanger("Oh f-"))
-								O.drop_organs()
-								qdel(O)
-								new /obj/effect/gibspawner/human/bodypartless(get_turf(C))
-
-				if(prob(30))
-					C.apply_damage(max(0, squish_damage - crit_rebate), forced=TRUE, spread_damage=TRUE) // the 30% chance to spread the damage means you escape breaking any bones
-				else
-					C.take_bodypart_damage((squish_damage - crit_rebate)*0.5, wound_bonus = 5) // otherwise, deal it to 2 random limbs (or the same one) which will likely shatter something
-					C.take_bodypart_damage((squish_damage - crit_rebate)*0.5, wound_bonus = 5)
-				C.AddElement(/datum/element/squish, 80 SECONDS)
-			else
-				L.visible_message(span_danger("[L] is crushed by [src]!"), \
-				span_userdanger("You are crushed by [src]!"))
-				L.apply_damage(squish_damage, forced=TRUE)
-				if(crit_case)
-					L.apply_damage(squish_damage, forced=TRUE)
-			if(was_alive && L.stat == DEAD && L.client)
-				L.client.give_award(/datum/award/achievement/misc/vendor_squish, L) // good job losing a fight with an inanimate object idiot
-
-			L.Paralyze(60)
-			L.emote("scream")
-			. = TRUE
-			playsound(L, 'sound/effects/blobattack.ogg', 40, TRUE)
-			playsound(L, 'sound/effects/splat.ogg', 50, TRUE)
-			add_memory_in_range(L, 7, MEMORY_VENDING_CRUSHED, list(DETAIL_PROTAGONIST = L, DETAIL_WHAT_BY = src), story_value = STORY_VALUE_AMAZING, memory_flags = MEMORY_CHECK_BLINDNESS, protagonist_memory_flags = MEMORY_SKIP_UNCONSCIOUS)
-
-	var/matrix/M = matrix()
-	M.Turn(pick(90, 270))
-	transform = M
+		if (. & SUCCESSFULLY_FELL_OVER)
+			visible_message(span_danger("[src] tips over!"))
+			tilted = TRUE
+			tilted_rotation = picked_rotation
+			layer = ABOVE_MOB_LAYER
+			SET_PLANE_IMPLICIT(src, GAME_PLANE_UPPER)
 
 	if(get_turf(fatty) != get_turf(src))
-		throw_at(get_turf(fatty), 1, 1, spin=FALSE, quickstart=FALSE)
+		throw_at(get_turf(fatty), 1, 1, spin = FALSE, quickstart = FALSE)
+
+/**
+ * Causes src to fall onto [target], crushing everything on it (including itself) with [damage]
+ * and a small chance to do a spectacular effect per entity (if a chance above 0 is provided).
+ *
+ * Args:
+ * * turf/target: The turf to fall onto. Cannot be null.
+ * * damage: The raw numerical damage to do by default.
+ * * chance_to_crit: The percent chance of a critical hit occuring. Default: 0
+ * * forced_crit_case: If given a value from crushing.dm, [target] and it's contents will always be hit with that specific critical hit. Default: null
+ * * paralyze_time: The time, in deciseconds, a given mob/living will be paralyzed for if crushed.
+ * * crush_dir: The direction the crush is coming from. Default: dir of src to [target].
+ * * damage_type: The type of damage to do. Default: BRUTE
+ * * damage_flag: The attack flag for armor purposes. Default: MELEE
+ * * rotation: The angle of which to rotate src's transform by on a successful tilt. Default: 90.
+ *
+ * Returns: A collection of bitflags defined in crushing.dm. Read that file's documentation for info.
+ */
+/atom/movable/proc/fall_and_crush(turf/target, damage, chance_to_crit = 0, forced_crit_case = null, paralyze_time, crush_dir = get_dir(get_turf(src), target), damage_type = BRUTE, damage_flag = MELEE, rotation = 90)
+
+	ASSERT(!isnull(target))
+
+	var/flags_to_return = NONE
+
+	if (!target.is_blocked_turf(TRUE, src, list(src)))
+		for(var/atom/atom_target in (target.contents) + target)
+			if (isarea(atom_target))
+				continue
+
+			if (SEND_SIGNAL(atom_target, COMSIG_PRE_TILT_AND_CRUSH, src) & COMPONENT_IMMUNE_TO_TILT_AND_CRUSH)
+				continue
+
+			var/crit_case = forced_crit_case
+			if (isnull(crit_case) && chance_to_crit > 0)
+				if (prob(chance_to_crit))
+					crit_case = pick_weight(get_crit_crush_chances())
+			var/crit_rebate_mult = 1 // lessen the normal damage we deal for some of the crits
+
+			if (!isnull(crit_case))
+				crit_rebate_mult = fall_and_crush_crit_rebate_table(crit_case)
+				apply_crit_crush(crit_case, atom_target)
+
+			var/adjusted_damage = damage * crit_rebate_mult
+			var/crushed
+			if (isliving(atom_target))
+				crushed = TRUE
+				var/mob/living/carbon/living_target = atom_target
+				var/was_alive = (living_target.stat != DEAD)
+				var/blocked = living_target.run_armor_check(attack_flag = damage_flag)
+				if (iscarbon(living_target))
+					var/mob/living/carbon/carbon_target = living_target
+					if(prob(30))
+						carbon_target.apply_damage(max(0, adjusted_damage), damage_type, blocked = blocked, forced = TRUE, spread_damage = TRUE, attack_direction = crush_dir) // the 30% chance to spread the damage means you escape breaking any bones
+					else
+						var/brute = (damage_type == BRUTE ? damage : 0) * 0.5
+						var/burn = (damage_type == BURN ? damage : 0) * 0.5
+						carbon_target.take_bodypart_damage(brute, burn, check_armor = TRUE, wound_bonus = 5) // otherwise, deal it to 2 random limbs (or the same one) which will likely shatter something
+						carbon_target.take_bodypart_damage(brute, burn, check_armor = TRUE, wound_bonus = 5)
+					carbon_target.AddElement(/datum/element/squish, 80 SECONDS)
+				else
+					living_target.apply_damage(adjusted_damage, damage_type, blocked = blocked, forced = TRUE, attack_direction = crush_dir)
+
+				living_target.Paralyze(paralyze_time)
+				living_target.emote("scream")
+				playsound(living_target, 'sound/effects/blobattack.ogg', 40, TRUE)
+				playsound(living_target, 'sound/effects/splat.ogg', 50, TRUE)
+				post_crush_living(living_target, was_alive)
+				flags_to_return |= (SUCCESSFULLY_CRUSHED_MOB|SUCCESSFULLY_CRUSHED_ATOM)
+
+			else if (atom_target.uses_integrity && !(atom_target.invisibility > SEE_INVISIBLE_LIVING) && !(is_type_in_typecache(atom_target, GLOB.WALLITEMS_INTERIOR) || is_type_in_typecache(atom_target, GLOB.WALLITEMS_EXTERIOR)))
+				atom_target.take_damage(adjusted_damage, damage_type, damage_flag, FALSE, crush_dir)
+				crushed = TRUE
+				flags_to_return |= SUCCESSFULLY_CRUSHED_ATOM
+
+			if (crushed)
+				atom_target.visible_message(span_danger("[atom_target] is crushed by [src]!"), span_userdanger("You are crushed by [src]!"))
+				SEND_SIGNAL(atom_target, COMSIG_POST_TILT_AND_CRUSH, src)
+
+		var/matrix/to_turn = turn(transform, rotation)
+		animate(src, transform = to_turn, 0.2 SECONDS)
+		playsound(src, 'sound/effects/bang.ogg', 40)
+
+		visible_message(span_danger("[src] tips over, slamming hard onto [target]!"))
+		flags_to_return |= SUCCESSFULLY_FELL_OVER
+		post_tilt()
+	else
+		visible_message(span_danger("[src] rebounds comically as it fails to slam onto [target]!"))
+
+	Move(target, crush_dir) // we still TRY to move onto it for shit like teleporters
+	return flags_to_return
+
+/**
+ * Exists for the purposes of custom behavior.
+ * Called directly after [crushed] is crushed.
+ *
+ * Args:
+ * * mob/living/crushed: The mob that was crushed.
+ * * was_alive: Boolean. True if the mob was alive before the crushing.
+ */
+/atom/movable/proc/post_crush_living(mob/living/crushed, was_alive)
+	return
+
+/**
+ * Exists for the purposes of custom behavior.
+ * Called directly after src actually rotates and falls over.
+ */
+/atom/movable/proc/post_tilt()
+	return
+
+/obj/machinery/vending/post_crush_living(mob/living/crushed, was_alive)
+
+	if(was_alive && crushed.stat == DEAD && crushed.client)
+		crushed.client.give_award(/datum/award/achievement/misc/vendor_squish, crushed) // good job losing a fight with an inanimate object idiot
+
+	add_memory_in_range(crushed, 7, /datum/memory/witness_vendor_crush, protagonist = crushed, antagonist = src)
+
+	return ..()
+
+/**
+ * Allows damage to be reduced on certain crit cases.
+ * Args:
+ * * crit_case: The critical case chosen.
+ */
+/atom/movable/proc/fall_and_crush_crit_rebate_table(crit_case)
+
+	ASSERT(!isnull(crit_case))
+
+	switch(crit_case)
+		if (CRUSH_CRIT_SHATTER_LEGS)
+			return 0.2
+		else
+			return 1
+
+/obj/machinery/vending/fall_and_crush_crit_rebate_table(crit_case)
+
+	if (crit_case == VENDOR_CRUSH_CRIT_GLASSCANDY)
+		return 0.33
+
+	return ..()
+
+/**
+ * Returns a assoc list of (critcase -> num), where critcase is a critical define in crushing.dm and num is a weight.
+ * Use with pickweight to acquire a random critcase.
+ */
+/atom/movable/proc/get_crit_crush_chances()
+	RETURN_TYPE(/list)
+
+	var/list/weighted_crits = list()
+
+	weighted_crits[CRUSH_CRIT_SHATTER_LEGS] = 100
+	weighted_crits[CRUSH_CRIT_PARAPALEGIC] = 80
+	weighted_crits[CRUSH_CRIT_HEADGIB] = 20
+	weighted_crits[CRUSH_CRIT_SQUISH_LIMB] = 100
+
+	return weighted_crits
+
+/obj/machinery/vending/get_crit_crush_chances()
+	var/list/weighted_crits = ..()
+
+	weighted_crits[VENDOR_CRUSH_CRIT_GLASSCANDY] = 100
+	weighted_crits[VENDOR_CRUSH_CRIT_PIN] = 100
+
+	return weighted_crits
+
+/**
+ * Should be where critcase effects are actually implemented. Use this to apply critcases.
+ * Args:
+ * * crit_case: The chosen critcase, defined in crushing.dm.
+ * * atom/atom_target: The target to apply the critical hit to. Cannot be null. Can be anything except /area.
+ *
+ * Returns:
+ * TRUE if a crit case is successfully applied, FALSE otherwise.
+ */
+/atom/movable/proc/apply_crit_crush(crit_case, atom/atom_target)
+	switch (crit_case)
+		if(CRUSH_CRIT_SHATTER_LEGS) // shatter their legs and bleed 'em
+			if (!iscarbon(atom_target))
+				return FALSE
+			var/mob/living/carbon/carbon_target = atom_target
+			carbon_target.bleed(150)
+			var/obj/item/bodypart/leg/left/left_leg = carbon_target.get_bodypart(BODY_ZONE_L_LEG)
+			if(left_leg)
+				left_leg.receive_damage(brute = 200)
+			var/obj/item/bodypart/leg/right/right_leg = carbon_target.get_bodypart(BODY_ZONE_R_LEG)
+			if(right_leg)
+				right_leg.receive_damage(brute = 200)
+			if(left_leg || right_leg)
+				carbon_target.visible_message(span_danger("[carbon_target]'s legs shatter with a sickening crunch!"), span_userdanger("Your legs shatter with a sickening crunch!"))
+			return TRUE
+		if(CRUSH_CRIT_PARAPALEGIC) // paralyze this binch
+			// the new paraplegic gets like 4 lines of losing their legs so skip them
+			if (!iscarbon(atom_target))
+				return FALSE
+			var/mob/living/carbon/carbon_target = atom_target
+			visible_message(span_danger("[carbon_target]'s spinal cord is obliterated with a sickening crunch!"), ignored_mobs = list(carbon_target))
+			carbon_target.gain_trauma(/datum/brain_trauma/severe/paralysis/paraplegic)
+			return TRUE
+		if(CRUSH_CRIT_SQUISH_LIMB) // limb squish!
+			if (!iscarbon(atom_target))
+				return FALSE
+			var/mob/living/carbon/carbon_target = atom_target
+			for(var/obj/item/bodypart/squish_part in carbon_target.bodyparts)
+				if(IS_ORGANIC_LIMB(squish_part))
+					var/type_wound = pick(list(/datum/wound/blunt/critical, /datum/wound/blunt/severe, /datum/wound/blunt/moderate))
+					squish_part.force_wound_upwards(type_wound, wound_source = "crushed by [src]")
+				else
+					squish_part.receive_damage(brute=30)
+			carbon_target.visible_message(span_danger("[carbon_target]'s body is maimed underneath the mass of [src]!"), span_userdanger("Your body is maimed underneath the mass of [src]!"))
+			return TRUE
+		if(CRUSH_CRIT_HEADGIB) // skull squish!
+			if (!iscarbon(atom_target))
+				return FALSE
+			var/mob/living/carbon/carbon_target = atom_target
+			var/obj/item/bodypart/head/carbon_head = carbon_target.get_bodypart(BODY_ZONE_HEAD)
+			if(carbon_head)
+				if(carbon_head.dismember())
+					carbon_target.visible_message(span_danger("[carbon_head] explodes in a shower of gore beneath [src]!"),	span_userdanger("Oh f-"))
+					carbon_head.drop_organs()
+					qdel(carbon_head)
+					new /obj/effect/gibspawner/human/bodypartless(get_turf(carbon_target))
+			return TRUE
+
+	return FALSE
+
+/obj/machinery/vending/apply_crit_crush(crit_case, atom_target)
+	. = ..()
+
+	if (.)
+		return TRUE
+
+	switch (crit_case)
+		if (VENDOR_CRUSH_CRIT_GLASSCANDY)
+			if (!iscarbon(atom_target))
+				return FALSE
+			var/mob/living/carbon/carbon_target = atom_target
+			for(var/i in 1 to num_shards)
+				var/obj/item/shard/shard = new /obj/item/shard(get_turf(carbon_target))
+				shard.embedding = list(embed_chance = 100, ignore_throwspeed_threshold = TRUE, impact_pain_mult = 1, pain_chance = 5)
+				shard.updateEmbedding()
+				carbon_target.hitby(shard, skipcatch = TRUE, hitpush = FALSE)
+				shard.embedding = list()
+				shard.updateEmbedding()
+			return TRUE
+		if (VENDOR_CRUSH_CRIT_PIN) // pin them beneath the machine until someone untilts it
+			if (!isliving(atom_target))
+				return FALSE
+			var/mob/living/living_target = atom_target
+			forceMove(get_turf(living_target))
+			buckle_mob(living_target, force=TRUE)
+			living_target.visible_message(span_danger("[living_target] is pinned underneath [src]!"), span_userdanger("You are pinned down by [src]!"))
+			return TRUE
+
+	return FALSE
 
 /obj/machinery/vending/proc/untilt(mob/user)
 	if(user)
@@ -767,11 +977,11 @@ GLOBAL_LIST_EMPTY(vending_products)
 
 	tilted = FALSE
 	layer = initial(layer)
-	plane = initial(plane)
+	SET_PLANE_IMPLICIT(src, initial(plane))
 
-	var/matrix/M = matrix()
-	M.Turn(0)
-	transform = M
+	var/matrix/to_turn = turn(transform, -tilted_rotation)
+	animate(src, transform = to_turn, 0.2 SECONDS)
+	tilted_rotation = 0
 
 /obj/machinery/vending/proc/loadingAttempt(obj/item/I, mob/user)
 	. = TRUE
@@ -797,30 +1007,17 @@ GLOBAL_LIST_EMPTY(vending_products)
 	. = ..()
 
 /**
- * Is the passed in user allowed to load this vending machines compartments
+ * Is the passed in user allowed to load this vending machines compartments? This only is ran if we are using a /obj/item/storage/bag to load the vending machine, and not a dedicated restocker.
  *
  * Arguments:
  * * user - mob that is doing the loading of the vending machine
  */
 /obj/machinery/vending/proc/compartmentLoadAccessCheck(mob/user)
-	if(!canload_access_list)
+	if(!req_access || allowed(user) || (obj_flags & EMAGGED) || !scan_id)
 		return TRUE
-	else
-		var/do_you_have_access = FALSE
-		var/req_access_txt_holder = req_access_txt
-		for(var/i in canload_access_list)
-			req_access_txt = i
-			if(!allowed(user) && !(obj_flags & EMAGGED) && scan_id)
-				continue
-			else
-				do_you_have_access = TRUE
-				break //you passed don't bother looping anymore
-		req_access_txt = req_access_txt_holder // revert to normal (before the proc ran)
-		if(do_you_have_access)
-			return TRUE
-		else
-			to_chat(user, span_warning("[src]'s input compartment blinks red: Access denied."))
-			return FALSE
+
+	to_chat(user, span_warning("[src]'s input compartment blinks red: Access denied."))
+	return FALSE
 
 /obj/machinery/vending/exchange_parts(mob/user, obj/item/storage/part_replacer/W)
 	if(!istype(W))
@@ -848,22 +1045,24 @@ GLOBAL_LIST_EMPTY(vending_products)
 	update_canister()
 	. = ..()
 
-/obj/machinery/vending/emag_act(mob/user)
+/obj/machinery/vending/emag_act(mob/user, obj/item/card/emag/emag_card)
 	if(obj_flags & EMAGGED)
-		return
+		return FALSE
 	obj_flags |= EMAGGED
-	to_chat(user, span_notice("You short out the product lock on [src]."))
+	balloon_alert(user, "product lock disabled")
+	return TRUE
 
-/obj/machinery/vending/_try_interact(mob/user)
-	if(seconds_electrified && !(machine_stat & NOPOWER))
-		if(shock(user, 100))
+/obj/machinery/vending/interact(mob/user)
+	if (!isAI(user))
+		if(seconds_electrified && !(machine_stat & NOPOWER))
+			if(shock(user, 100))
+				return
+
+		if(tilted && !user.buckled && !isAdminGhostAI(user))
+			to_chat(user, span_notice("You begin righting [src]."))
+			if(do_after(user, 50, target=src))
+				untilt(user)
 			return
-
-	if(tilted && !user.buckled && !isAI(user))
-		to_chat(user, span_notice("You begin righting [src]."))
-		if(do_after(user, 50, target=src))
-			untilt(user)
-		return
 
 	return ..()
 
@@ -948,10 +1147,10 @@ GLOBAL_LIST_EMPTY(vending_products)
 			.["user"]["department"] = C.registered_account.account_job.paycheck_department
 		else
 			.["user"]["job"] = "No Job"
-			.["user"]["department"] = "No Department"
+			.["user"]["department"] = DEPARTMENT_UNASSIGNED
 	.["stock"] = list()
 
-	for (var/datum/data/vending_product/product_record in product_records + coin_records + hidden_records)
+	for (var/datum/data/vending_product/product_record as anything in product_records + coin_records + hidden_records)
 		var/list/product_data = list(
 			name = product_record.name,
 			amount = product_record.amount,
@@ -1003,7 +1202,7 @@ GLOBAL_LIST_EMPTY(vending_products)
 			allowed_configs += "[initial(item.greyscale_config_inhand_right)]"
 
 	var/datum/greyscale_modify_menu/menu = new(
-		src, usr, allowed_configs, CALLBACK(src, .proc/vend_greyscale, params),
+		src, usr, allowed_configs, CALLBACK(src, PROC_REF(vend_greyscale), params),
 		starting_icon_state=initial(fake_atom.icon_state),
 		starting_config=initial(fake_atom.greyscale_config),
 		starting_colors=initial(fake_atom.greyscale_colors)
@@ -1041,7 +1240,7 @@ GLOBAL_LIST_EMPTY(vending_products)
 		message_admins("Vending machine exploit attempted by [ADMIN_LOOKUPFLW(usr)]!")
 		return
 	if (R.amount <= 0)
-		say("Sold out of [R.name].")
+		speak("Sold out of [R.name].")
 		flick(icon_deny,src)
 		vend_ready = TRUE
 		return
@@ -1051,25 +1250,28 @@ GLOBAL_LIST_EMPTY(vending_products)
 			var/mob/living/L = usr
 			C = L.get_idcard(TRUE)
 		if(!C)
-			say("No card found.")
+			speak("No card found.")
 			flick(icon_deny,src)
 			vend_ready = TRUE
 			return
 		else if (!C.registered_account)
-			say("No account found.")
+			speak("No account found.")
 			flick(icon_deny,src)
 			vend_ready = TRUE
 			return
 		else if(!C.registered_account.account_job)
-			say("Departmental accounts have been blacklisted from personal expenses due to embezzlement.")
+			speak("Departmental accounts have been blacklisted from personal expenses due to embezzlement.")
 			flick(icon_deny, src)
 			vend_ready = TRUE
 			return
 		else if(age_restrictions && R.age_restricted && (!C.registered_age || C.registered_age < AGE_MINOR))
-			say("You are not of legal age to purchase [R.name].")
+			speak("You are not of legal age to purchase [R.name].")
 			if(!(usr in GLOB.narcd_underages))
-				Radio.set_frequency(FREQ_SECURITY)
-				Radio.talk_into(src, "SECURITY ALERT: Underaged crewmember [usr] recorded attempting to purchase [R.name] in [get_area(src)]. Please watch for substance abuse.", FREQ_SECURITY)
+				if (isnull(sec_radio))
+					sec_radio = new (src)
+					sec_radio.set_listening(FALSE)
+				sec_radio.set_frequency(FREQ_SECURITY)
+				sec_radio.talk_into(src, "SECURITY ALERT: Underaged crewmember [usr] recorded attempting to purchase [R.name] in [get_area(src)]. Please watch for substance abuse.", FREQ_SECURITY)
 				GLOB.narcd_underages += usr
 			flick(icon_deny,src)
 			vend_ready = TRUE
@@ -1081,8 +1283,8 @@ GLOBAL_LIST_EMPTY(vending_products)
 			price_to_use = R.custom_premium_price ? R.custom_premium_price : extra_price
 		if(LAZYLEN(R.returned_products))
 			price_to_use = 0 //returned items are free
-		if(price_to_use && !account.adjust_money(-price_to_use))
-			say("You do not possess the funds to purchase [R.name].")
+		if(price_to_use && !account.adjust_money(-price_to_use, "Vending: [R.name]"))
+			speak("You do not possess the funds to purchase [R.name].")
 			flick(icon_deny,src)
 			vend_ready = TRUE
 			return
@@ -1093,7 +1295,8 @@ GLOBAL_LIST_EMPTY(vending_products)
 			SSeconomy.track_purchase(account, price_to_use, name)
 			log_econ("[price_to_use] credits were inserted into [src] by [account.account_holder] to buy [R].")
 	if(last_shopper != REF(usr) || purchase_message_cooldown < world.time)
-		say("Thank you for shopping with [src]!")
+		var/vend_response = vend_reply || "Thank you for shopping with [src]!"
+		speak(vend_response)
 		purchase_message_cooldown = world.time + 5 SECONDS
 		//This is not the best practice, but it's safe enough here since the chances of two people using a machine with the same ref in 5 seconds is fuck low
 		last_shopper = REF(usr)
@@ -1118,7 +1321,7 @@ GLOBAL_LIST_EMPTY(vending_products)
 	SSblackbox.record_feedback("nested tally", "vending_machine_usage", 1, list("[type]", "[R.product_path]"))
 	vend_ready = TRUE
 
-/obj/machinery/vending/process(delta_time)
+/obj/machinery/vending/process(seconds_per_tick)
 	if(machine_stat & (BROKEN|NOPOWER))
 		return PROCESS_KILL
 	if(!active)
@@ -1128,12 +1331,12 @@ GLOBAL_LIST_EMPTY(vending_products)
 		seconds_electrified--
 
 	//Pitch to the people!  Really sell it!
-	if(last_slogan + slogan_delay <= world.time && slogan_list.len > 0 && !shut_up && DT_PROB(2.5, delta_time))
+	if(last_slogan + slogan_delay <= world.time && slogan_list.len > 0 && !shut_up && SPT_PROB(2.5, seconds_per_tick))
 		var/slogan = pick(slogan_list)
 		speak(slogan)
 		last_slogan = world.time
 
-	if(shoot_inventory && DT_PROB(shoot_inventory_chance, delta_time))
+	if(shoot_inventory && SPT_PROB(shoot_inventory_chance, seconds_per_tick))
 		throw_item()
 /**
  * Speak the given message verbally
@@ -1280,13 +1483,13 @@ GLOBAL_LIST_EMPTY(vending_products)
 /obj/machinery/vending/custom/canLoadItem(obj/item/I, mob/user)
 	. = FALSE
 	if(I.flags_1 & HOLOGRAM_1)
-		say("This vendor cannot accept nonexistent items.")
+		speak("This vendor cannot accept nonexistent items.")
 		return
 	if(loaded_items >= max_loaded_items)
-		say("There are too many items in stock.")
+		speak("There are too many items in stock.")
 		return
 	if(isstack(I))
-		say("Loose items may cause problems, try to use it inside wrapping paper.")
+		speak("Loose items may cause problems, try to use it inside wrapping paper.")
 		return
 	if(I.custom_price)
 		return TRUE
@@ -1341,7 +1544,7 @@ GLOBAL_LIST_EMPTY(vending_products)
 		var/obj/item/card/id/C = L.get_idcard(TRUE)
 		if(C?.registered_account)
 			linked_account = C.registered_account
-			say("\The [src] has been linked to [C].")
+			speak("\The [src] has been linked to [C].")
 
 	if(compartmentLoadAccessCheck(user))
 		if(istype(I, /obj/item/pen))
@@ -1356,12 +1559,12 @@ GLOBAL_LIST_EMPTY(vending_products)
 /obj/machinery/vending/custom/crowbar_act(mob/living/user, obj/item/I)
 	return FALSE
 
-/obj/machinery/vending/custom/Destroy()
+/obj/machinery/vending/custom/deconstruct(disassembled)
 	unbuckle_all_mobs(TRUE)
-	var/turf/T = get_turf(src)
-	if(T)
-		for(var/obj/item/I in contents)
-			I.forceMove(T)
+	var/turf/current_turf = get_turf(src)
+	if(current_turf)
+		for(var/obj/item/stored_item in contents)
+			stored_item.forceMove(current_turf)
 		explosion(src, devastation_range = -1, light_impact_range = 3)
 	return ..()
 
@@ -1393,8 +1596,8 @@ GLOBAL_LIST_EMPTY(vending_products)
 			balloon_alert(user, "insufficient funds")
 			return TRUE
 		/// Make the transaction
-		payee.adjust_money(-dispensed_item.custom_price)
-		linked_account.adjust_money(dispensed_item.custom_price)
+		payee.adjust_money(-dispensed_item.custom_price, , "Vending: [dispensed_item]")
+		linked_account.adjust_money(dispensed_item.custom_price, "Vending: [dispensed_item] Bought")
 		linked_account.bank_card_talk("[payee.account_holder] made a [dispensed_item.custom_price] \
 		cr purchase at your custom vendor.")
 		/// Log the transaction
@@ -1403,7 +1606,7 @@ GLOBAL_LIST_EMPTY(vending_products)
 		[dispensed_item] by [payee.account_holder], owned by [linked_account.account_holder].")
 		/// Make an alert
 		if(last_shopper != REF(usr) || purchase_message_cooldown < world.time)
-			say("Thank you for your patronage [user]!")
+			speak("Thank you for your patronage [user]!")
 			purchase_message_cooldown = world.time + 5 SECONDS
 			last_shopper = REF(usr)
 	/// Remove the item
@@ -1425,34 +1628,6 @@ GLOBAL_LIST_EMPTY(vending_products)
 	icon_state = "refill_custom"
 	custom_premium_price = PAYCHECK_CREW
 
-/obj/item/price_tagger
-	name = "price tagger"
-	desc = "This tool is used to set a price for items used in custom vendors."
-	icon = 'icons/obj/device.dmi'
-	icon_state = "pricetagger"
-	custom_premium_price = PAYCHECK_CREW * 0.5
-	///the price of the item
-	var/price = 1
-
-/obj/item/price_tagger/attack_self(mob/user)
-	if(loc != user)
-		to_chat(user, span_warning("You must be holding the price tagger to continue!"))
-		return
-	var/chosen_price = tgui_input_number(user, "Set price", "Price", price)
-	if(!chosen_price || QDELETED(user) || QDELETED(src) || !user.canUseTopic(src, BE_CLOSE, FALSE, NO_TK) || loc != user)
-		return
-	price = chosen_price
-	to_chat(user, span_notice(" The [src] will now give things a [price] cr tag."))
-
-/obj/item/price_tagger/afterattack(atom/target, mob/user, proximity)
-	. = ..()
-	if(!proximity)
-		return
-	if(isitem(target))
-		var/obj/item/I = target
-		I.custom_price = price
-		to_chat(user, span_notice("You set the price of [I] to [price] cr."))
-
 /obj/machinery/vending/custom/greed //name and like decided by the spawn
 	icon_state = "greed"
 	icon_deny = "greed-deny"
@@ -1460,12 +1635,12 @@ GLOBAL_LIST_EMPTY(vending_products)
 	max_integrity = 700
 	max_loaded_items = 40
 	light_mask = "greed-light-mask"
-	custom_materials = list(/datum/material/gold = MINERAL_MATERIAL_AMOUNT * 5)
+	custom_materials = list(/datum/material/gold = SHEET_MATERIAL_AMOUNT * 5)
 
 /obj/machinery/vending/custom/greed/Initialize(mapload)
 	. = ..()
 	//starts in a state where you can move it
-	panel_open = TRUE
+	set_panel_open(TRUE)
 	set_anchored(FALSE)
 	add_overlay(panel_type)
 	//and references the deity
@@ -1474,3 +1649,5 @@ GLOBAL_LIST_EMPTY(vending_products)
 	slogan_list = list("[GLOB.deity] says: It's your divine right to buy!")
 	add_filter("vending_outline", 9, list("type" = "outline", "color" = COLOR_VERY_SOFT_YELLOW))
 	add_filter("vending_rays", 10, list("type" = "rays", "size" = 35, "color" = COLOR_VIVID_YELLOW))
+
+#undef MAX_VENDING_INPUT_AMOUNT

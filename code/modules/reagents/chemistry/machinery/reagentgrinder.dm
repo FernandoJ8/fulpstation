@@ -1,15 +1,15 @@
-#define MILK_TO_BUTTER_COEFF 15
 
 /obj/machinery/reagentgrinder
 	name = "\improper All-In-One Grinder"
 	desc = "From BlenderTech. Will It Blend? Let's test it out!"
-	icon = 'icons/obj/kitchen.dmi'
+	icon = 'icons/obj/machines/kitchen.dmi'
 	icon_state = "juicer1"
 	base_icon_state = "juicer"
 	layer = BELOW_OBJ_LAYER
 	circuit = /obj/item/circuitboard/machine/reagentgrinder
 	pass_flags = PASSTABLE
 	resistance_flags = ACID_PROOF
+	anchored_tabletop_offset = 8
 	var/operating = FALSE
 	var/obj/item/reagent_containers/beaker = null
 	var/limit = 10
@@ -67,8 +67,8 @@
 /obj/machinery/reagentgrinder/RefreshParts()
 	. = ..()
 	speed = 1
-	for(var/obj/item/stock_parts/manipulator/M in component_parts)
-		speed = M.rating
+	for(var/datum/stock_part/servo/servo in component_parts)
+		speed = servo.tier
 
 /obj/machinery/reagentgrinder/examine(mob/user)
 	. = ..()
@@ -99,7 +99,7 @@
 	. = ..()
 	if(. == SECONDARY_ATTACK_CANCEL_ATTACK_CHAIN)
 		return
-	if(!can_interact(user) || !user.canUseTopic(src, !issilicon(user), FALSE, NO_TK))
+	if(!can_interact(user) || !user.can_perform_action(src, ALLOW_SILICON_REACH|FORBID_TELEKINESIS_REACH))
 		return
 	if(operating)
 		return
@@ -173,14 +173,23 @@
 
 	//Fill machine with a bag!
 	if(istype(I, /obj/item/storage/bag))
+		if(!I.contents.len)
+			to_chat(user, span_notice("[I] is empty!"))
+			return TRUE
+
 		var/list/inserted = list()
-		if(I.atom_storage.remove_type(/obj/item/food/grown, src, limit - length(holdingitems), null, null, user, inserted))
+		if(I.atom_storage.remove_type(/obj/item/food/grown, src, limit - length(holdingitems), TRUE, FALSE, user, inserted))
 			for(var/i in inserted)
 				holdingitems[i] = TRUE
-			if(!I.contents.len)
-				to_chat(user, span_notice("You empty [I] into [src]."))
-			else
-				to_chat(user, span_notice("You fill [src] to the brim."))
+			inserted = list()
+		if(I.atom_storage.remove_type(/obj/item/food/honeycomb, src, limit - length(holdingitems), TRUE, FALSE, user, inserted))
+			for(var/i in inserted)
+				holdingitems[i] = TRUE
+
+		if(!I.contents.len)
+			to_chat(user, span_notice("You empty [I] into [src]."))
+		else
+			to_chat(user, span_notice("You fill [src] to the brim."))
 		return TRUE
 
 	if(!I.grind_results && !I.juice_results)
@@ -201,7 +210,7 @@
 /obj/machinery/reagentgrinder/ui_interact(mob/user) // The microwave Menu //I am reasonably certain that this is not a microwave
 	. = ..()
 
-	if(operating || !user.canUseTopic(src, !issilicon(user)))
+	if(operating || !user.can_perform_action(src, ALLOW_SILICON_REACH))
 		return
 
 	var/list/options = list()
@@ -232,7 +241,7 @@
 		choice = show_radial_menu(user, src, options, require_near = !issilicon(user))
 
 	// post choice verification
-	if(operating || (isAI(user) && machine_stat & NOPOWER) || !user.canUseTopic(src, !issilicon(user)))
+	if(operating || (isAI(user) && machine_stat & NOPOWER) || !user.can_perform_action(src, ALLOW_SILICON_REACH))
 		return
 
 	switch(choice)
@@ -275,7 +284,7 @@
 
 /obj/machinery/reagentgrinder/proc/shake_for(duration)
 	start_shaking() //start shaking
-	addtimer(CALLBACK(src, .proc/stop_shaking), duration)
+	addtimer(CALLBACK(src, PROC_REF(stop_shaking)), duration)
 
 /obj/machinery/reagentgrinder/proc/stop_shaking()
 	update_appearance()
@@ -290,7 +299,7 @@
 		else
 			playsound(src, 'sound/machines/juicer.ogg', 20, TRUE)
 	use_power(active_power_usage * time * 0.1) // .1 needed here to convert time (in deciseconds) to seconds such that watts * seconds = joules
-	addtimer(CALLBACK(src, .proc/stop_operating), time / speed)
+	addtimer(CALLBACK(src, PROC_REF(stop_operating)), time / speed)
 
 /obj/machinery/reagentgrinder/proc/stop_operating()
 	operating = FALSE
@@ -342,7 +351,7 @@
 	if(!beaker || machine_stat & (NOPOWER|BROKEN))
 		return
 	operate_for(50, juicing = TRUE)
-	addtimer(CALLBACK(src, /obj/machinery/reagentgrinder/proc/mix_complete), 50)
+	addtimer(CALLBACK(src, TYPE_PROC_REF(/obj/machinery/reagentgrinder, mix_complete)), 50)
 
 /obj/machinery/reagentgrinder/proc/mix_complete()
 	if(beaker?.reagents.total_volume)

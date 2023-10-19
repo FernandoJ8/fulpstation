@@ -9,7 +9,7 @@
 	has_gravity = STANDARD_GRAVITY
 	always_unpowered = FALSE
 	// Loading the same shuttle map at a different time will produce distinct area instances.
-	area_flags = NO_ALERTS
+	area_flags = NONE
 	icon = 'icons/area/areas_station.dmi'
 	icon_state = "shuttle"
 	flags_1 = CAN_BE_DIRTY_1
@@ -68,13 +68,10 @@
 
 /area/shuttle/hunter
 	name = "Hunter Shuttle"
-	static_lighting = FALSE
-	base_lighting_alpha = 255
 
 /area/shuttle/hunter/russian
 	name = "Russian Cargo Hauler"
 	requires_power = TRUE
-	static_lighting = TRUE
 
 ////////////////////////////White Ship////////////////////////////
 
@@ -121,8 +118,9 @@
 	if(SSshuttle.arrivals?.mode == SHUTTLE_CALL)
 		var/atom/movable/screen/splash/Spl = new(null, boarder.client, TRUE)
 		Spl.Fade(TRUE)
-//		boarder.playsound_local(get_turf(boarder), 'sound/voice/ApproachingTG.ogg', 25)
-		boarder.playsound_local(get_turf(boarder), 'fulp_modules/sounds/sound/arrival/ApproachingFulp.ogg', 25) // Fulp edit - Music
+		//boarder.playsound_local(get_turf(boarder), 'sound/voice/ApproachingTG.ogg', 25)
+		boarder.playsound_local(get_turf(boarder), 'fulp_modules/sounds/sound/arrival/ApproachingFulp.ogg', 25) // Fulp edit - Adding our music instead.
+	boarder.update_parallax_teleport()
 	boarder.update_parallax_teleport()
 
 
@@ -144,7 +142,6 @@
 
 /area/shuttle/mining
 	name = "Mining Shuttle"
-	area_flags = NONE //Set this so it doesn't inherit NO_ALERTS
 
 /area/shuttle/mining/large
 	name = "Mining Shuttle"
@@ -152,7 +149,6 @@
 
 /area/shuttle/labor
 	name = "Labor Camp Shuttle"
-	area_flags = NONE //Set this so it doesn't inherit NO_ALERTS
 
 /area/shuttle/supply
 	name = "Supply Shuttle"
@@ -163,7 +159,7 @@
 	area_flags = BLOBS_ALLOWED
 	area_limited_icon_smoothing = /area/shuttle/escape
 	flags_1 = CAN_BE_DIRTY_1
-	area_flags = NO_ALERTS | CULT_PERMITTED
+	area_flags = CULT_PERMITTED
 
 /area/shuttle/escape/backup
 	name = "Backup Emergency Shuttle"
@@ -191,6 +187,9 @@
 	name = "\proper a meteor with engines strapped to it"
 	luminosity = NONE
 
+/area/shuttle/escape/engine
+	name = "Escape Shuttle Engine"
+
 /area/shuttle/transport
 	name = "Transport Shuttle"
 
@@ -215,29 +214,41 @@
 /area/shuttle/syndicate_scout
 	name = "Syndicate Scout"
 
-/area/shuttle/caravan
+/area/shuttle/ruin
+	name = "Ruined Shuttle"
+
+/// Special shuttles made for the Caravan Ambush ruin.
+/area/shuttle/ruin/caravan
 	requires_power = TRUE
+	name = "Ruined Caravan Shuttle"
 
-/area/shuttle/caravan/syndicate1
+/area/shuttle/ruin/caravan/syndicate1
 	name = "Syndicate Fighter"
 
-/area/shuttle/caravan/syndicate2
+/area/shuttle/ruin/caravan/syndicate2
 	name = "Syndicate Fighter"
 
-/area/shuttle/caravan/syndicate3
+/area/shuttle/ruin/caravan/syndicate3
 	name = "Syndicate Drop Ship"
 
-/area/shuttle/caravan/pirate
+/area/shuttle/ruin/caravan/pirate
 	name = "Pirate Cutter"
 
-/area/shuttle/caravan/freighter1
+/area/shuttle/ruin/caravan/freighter1
 	name = "Small Freighter"
 
-/area/shuttle/caravan/freighter2
+/area/shuttle/ruin/caravan/freighter2
 	name = "Tiny Freighter"
 
-/area/shuttle/caravan/freighter3
+/area/shuttle/ruin/caravan/freighter3
 	name = "Tiny Freighter"
+
+// ----------- Cyborg Mothership
+
+/area/shuttle/ruin/cyborg_mothership
+	name = "Cyborg Mothership"
+	requires_power = TRUE
+	area_limited_icon_smoothing = /area/shuttle/ruin/cyborg_mothership
 
 // ----------- Arena Shuttle
 /area/shuttle/shuttle_arena
@@ -265,7 +276,7 @@
 		qdel(L.pulling)
 		var/turf/LA = get_turf(pick(warp_points))
 		L.forceMove(LA)
-		L.hallucination = 0
+		L.remove_status_effect(/datum/status_effect/hallucination)
 		to_chat(L, "<span class='reallybig redtext'>The battle is won. Your bloodlust subsides.</span>", confidential = TRUE)
 		for(var/obj/item/chainsaw/doomslayer/chainsaw in L)
 			qdel(chainsaw)
