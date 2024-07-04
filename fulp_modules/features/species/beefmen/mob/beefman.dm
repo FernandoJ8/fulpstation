@@ -226,7 +226,7 @@
 
 /datum/species/beefman/get_species_description()
 	return "Thanks to being made entirely out of beef, Beefman's brains are deeply flawed, \
-		causing them to suffer constant hallucinations and 'tears in reality'"
+		causing them to see 'tears in reality'. Interaction with these tears has lead the species to partial insanity."
 
 /datum/species/beefman/get_species_lore()
 	return list(
@@ -295,10 +295,10 @@
 		),
 		list(
 			SPECIES_PERK_TYPE = SPECIES_NEGATIVE_PERK,
-			SPECIES_PERK_ICON = "briefcase-medical",
+			SPECIES_PERK_ICON = "brain",
 			SPECIES_PERK_NAME = "Mentally unfit",
-			SPECIES_PERK_DESC = "Beefmen suffer from a permanent brain trauma \
-				that can't be repaired under normal circumstances.",
+			SPECIES_PERK_DESC = "Travelling through Phobetor Tears is psychologically taxing. \
+				Abusing the ability will lead to hallucinations and other side-effects.",
 		),
 	)
 
