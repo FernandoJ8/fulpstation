@@ -54842,6 +54842,10 @@
 /obj/item/toy/beach_ball,
 /turf/open/floor/plating,
 /area/station/maintenance/department/engine)
+"wME" = (
+/obj/machinery/telecomms/processor/preset_two,
+/turf/open/floor/circuit/red/telecomms,
+/area/station/tcommsat/server)
 "wNf" = (
 /obj/structure/cable,
 /obj/effect/turf_decal/trimline/red/filled/line{
@@ -67397,7 +67401,7 @@ ljK
 wOt
 wxw
 umD
-nso
+wME
 veB
 iyE
 wSz
