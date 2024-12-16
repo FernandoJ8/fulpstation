@@ -16,7 +16,7 @@
 	var/obj/item/assembly/flash/handheld/converter = allocate(/obj/item/assembly/flash/handheld)
 	converter.burnout_resistance = INFINITY
 	converter.cooldown = 0 SECONDS
-	leader.put_in_active_hand(converter, forced = TRUE)
+	leader.put_in_inactive_hand(converter, forced = TRUE)
 
 	// Fail state
 	converter.attack_self(leader)
