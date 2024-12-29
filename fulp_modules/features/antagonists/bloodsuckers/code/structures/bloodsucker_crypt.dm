@@ -537,7 +537,7 @@
 
 /// Blood Throne - Allows Bloodsuckers to remotely speak with their Vassals. - Code (Mostly) stolen from comfy chairs (armrests) and chairs (layers)
 /obj/structure/bloodsucker/bloodthrone
-	name = "Wicked throne"
+	name = "Wicked Throne"
 	desc = "Twisted metal shards jut from the arm rests, making it appear very uncomfortable. Still, it might sell well at an antique shop."
 	icon = 'fulp_modules/icons/antagonists/bloodsuckers/vamp_obj_64.dmi'
 	icon_state = "throne"
